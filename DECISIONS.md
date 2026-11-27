@@ -13,3 +13,9 @@
 - **Trade-offs:** Extended `MapProviderProps` inside `DatedexMapProps` rather than modifying `src/domain/map/types.ts`, preserving strict layer boundaries while supporting `hideHud`, `hideDock`, full Vault aliases, and `onSearchBounds(map.getBounds())`.
 - **Lifecycle:** Stripped `dark-v11` accent layers and mounted `minzoom: 14` matte `#333333` 3D extrusions + space fog on `style.load` (`src/features/map/utils/monochromeStyle.ts:292`), paired with hysteresis auto-pitch (`>15` -> `55°`, `<13.5` -> `0°`) and user manual-tilt override (`src/features/map/utils/monochromeStyle.ts:437`).
 - **Pointers:** `src/features/map/utils/monochromeStyle.ts:292`, `src/features/map/components/DatedexMap.tsx:298`, `src/features/map/components/MapFloatingControls.tsx:41`, `src/app/App.tsx:380`.
+
+## 2026-11-27 — Production CSP Update for Mapbox GL JS v3
+- **Assumptions:** `vercel.json` is the sole CSP source (`index.html` defines no CSP meta tag) governing both `https://www.date-dex.com` and `https://datedex-app.vercel.app`.
+- **Trade-offs:** Added `worker-src 'self' blob:` (needed for Mapbox GL JS blob Web Workers) and scoped Mapbox endpoints (`https://*.mapbox.com`, `https://api.mapbox.com`, `https://events.mapbox.com`) to `connect-src` and `https://*.mapbox.com` to `img-src` rather than relaxing `default-src` or `script-src`.
+- **Security:** Kept `frame-ancestors 'none'`, `base-uri 'self'`, `script-src`, Supabase, AdSense, and Stripe directives intact.
+- **Pointers:** `vercel.json:25-26`, `index.html:1-19`.
