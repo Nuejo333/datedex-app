@@ -98,7 +98,7 @@ export function RizzCoachPanel({
           <p className="mt-1 text-[11px] text-slate-400">
             {isAuthenticated
               ? 'Your account is on the Free tier. Upgrade via Stripe Checkout to unlock AI Rizz Coach.'
-              : 'Sign in passwordlessly (Google OAuth or Magic Link) in Vault & Sync first, then upgrade to Pro.'}
+              : 'Sign in passwordlessly (Google OAuth or Magic Link) in Settings first, then upgrade to Pro.'}
           </p>
         </div>
 

@@ -26,6 +26,7 @@ export interface VaultPanelProps {
   supabaseConfigured: boolean;
   signedInEmail: string | null;
   syncPhotos: boolean;
+  embeddedInSettings?: boolean;
   onToggleDiscreet: () => void;
   onToggleSyncPhotos: (next: boolean) => Promise<void>;
   onSetPassphrase: (passphrase: string) => Promise<void>;
@@ -47,6 +48,7 @@ export function VaultPanel({
   supabaseConfigured,
   signedInEmail,
   syncPhotos,
+  embeddedInSettings = false,
   onToggleDiscreet,
   onToggleSyncPhotos,
   onSetPassphrase,
@@ -308,16 +310,22 @@ export function VaultPanel({
                 Sync Encrypted Pins
               </button>
 
-              <button
-                type="button"
-                onClick={() => void onSignOut()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
-              >
-                <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                Sign Out
-              </button>
+              {!embeddedInSettings && (
+                <button
+                  type="button"
+                  onClick={() => void onSignOut()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
+                >
+                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
+        ) : embeddedInSettings ? (
+          <p className="text-xs text-slate-400">
+            Sign in under Account &amp; Authentication above to enable encrypted cloud sync.
+          </p>
         ) : (
           <div className="space-y-2.5">
             <p className="text-xs text-slate-400">

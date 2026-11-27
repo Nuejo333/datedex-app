@@ -9,7 +9,7 @@
  *     cleanly to the previous tab via Back.
  */
 import type { AuthChangeEvent, Session, UserIdentity } from '@supabase/supabase-js';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UserProfile } from '../../domain/models/profile';
@@ -160,20 +160,34 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
 
     render(<App />);
 
-    // App opens on Map tab by default with signed-in pin visible and no Hide HUD button
+    // App opens on Map tab by default with 3-item floating dock, sticky sponsored banner, and no Hide HUD button
     expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    const dock = screen.getByTestId('floating-dock');
+    expect(within(dock).getAllByRole('button')).toHaveLength(3);
+    expect(within(dock).getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(within(dock).queryByRole('button', { name: 'Vault' })).not.toBeInTheDocument();
+    expect(within(dock).queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('sticky-top-chrome')).getByTestId('ad-banner-slot')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Hide HUD' })).not.toBeInTheDocument();
     expect(await screen.findByText(/Secret Date Sofia/)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
+
+    // Top-header Import button opens full-viewport Import view and returns cleanly via Back
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+    expect(screen.getByTestId('import-page')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Starter Template (.xlsx)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Back to previous view' }));
+    expect(screen.queryByTestId('import-page')).not.toBeInTheDocument();
 
     // Switch to Pokédex before opening Settings to verify Sign Out resets activeTab to Map
     await user.click(screen.getByRole('button', { name: 'Pokédex' }));
     expect(screen.getByRole('button', { name: 'Pokédex' })).toHaveAttribute('aria-current', 'page');
 
-    // Open full-page Settings view from top header gear button
+    // Open full-page Settings view from top header gear button and confirm Vault is embedded
     await user.click(screen.getByRole('button', { name: 'Account & Settings (Signed in)' }));
     expect(screen.getByTestId('settings-page')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-vault-section')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync Encrypted Pins' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pair Google Account' })).toBeInTheDocument();
 
     // Sign Out clears dates/profile/IndexedDB without opening onboarding

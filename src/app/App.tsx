@@ -6,10 +6,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookHeart,
-  FileSpreadsheet,
   Globe2,
   Plus,
-  Shield,
   Sparkles,
 } from 'lucide-react';
 import type { Session, User, UserIdentity } from '@supabase/supabase-js';
@@ -67,12 +65,12 @@ import { PinEditorDialog } from '../features/pins/PinEditorDialog';
 import { HudStatsBar } from '../features/pokedex/HudStatsBar';
 import { PokedexDashboard } from '../features/pokedex/PokedexDashboard';
 import { RizzCoachPanel } from '../features/rizz-coach/RizzCoachPanel';
-import { SpreadsheetPanel } from '../features/spreadsheet/SpreadsheetPanel';
+import { ImportView } from '../features/spreadsheet/SpreadsheetPanel';
 import { SettingsView } from '../features/vault/SettingsView';
 import { VaultLockDialog } from '../features/vault/VaultLockDialog';
 import { VaultPanel } from '../features/vault/VaultPanel';
 
-type ActiveTab = 'pokedex' | 'map' | 'rizz' | 'import' | 'vault';
+type ActiveTab = 'pokedex' | 'map' | 'rizz';
 
 /**
  * Root Datédex PWA component orchestrating local-first storage, Vault privacy controls,
@@ -90,6 +88,7 @@ export function App(): React.JSX.Element {
   const [droppedCoord, setDroppedCoord] = useState<MapCoordinate | null>(null);
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [interstitialOpen, setInterstitialOpen] = useState(false);
   const [viewport, setViewport] = useState<MapViewport>({ latitude: 20, longitude: 0, zoom: 1.8 });
   const [mapAreaBounds, setMapAreaBounds] = useState<{
@@ -148,6 +147,7 @@ export function App(): React.JSX.Element {
     setEditorOpen(false);
     setDroppedCoord(null);
     setUnlockOpen(false);
+    setImportOpen(false);
     setInterstitialOpen(false);
     setMapAreaBounds(null);
     setActiveTab('map');
@@ -355,6 +355,7 @@ export function App(): React.JSX.Element {
     setProfile(nextProfile);
     setNeedsOnboarding(false);
     setSettingsOpen(false);
+    setImportOpen(false);
     setActiveTab('map');
     if (session?.user) {
       markUserOnboardingCompletedLocally(session.user.id);
@@ -507,7 +508,7 @@ export function App(): React.JSX.Element {
     );
   }
 
-  // Full-viewport Settings screen (returns cleanly to the previous tab via Back)
+  // Full-viewport Settings screen with embedded Vault / Encryption & Cloud Sync section
   if (settingsOpen) {
     return (
       <>
@@ -521,6 +522,57 @@ export function App(): React.JSX.Element {
           hasPassphraseLock={vaultSettings.hasPassphraseLock}
           localPinCount={pins.length}
           authRedirectError={authRedirectError}
+          vaultSection={
+            <VaultPanel
+              embeddedInSettings
+              vaultSettings={vaultSettings}
+              supabaseConfigured={supabaseConfigured}
+              signedInEmail={session?.user?.email ?? null}
+              syncPhotos={profile?.syncPhotos ?? false}
+              onToggleDiscreet={handleToggleDiscreet}
+              onToggleSyncPhotos={async (next) => {
+                const baseProfile: UserProfile = profile ?? {
+                  id: 'local-profile',
+                  displayName: session?.user?.email?.split('@')[0] || 'Explorer',
+                  homeCountry: 'US',
+                  syncPhotos: false,
+                  vaultEnabled: vaultSettings.hasPassphraseLock,
+                  onboardingCompleted: true,
+                  privacyPledgeAccepted: true,
+                  updatedAt: new Date().toISOString(),
+                };
+                const updated = await localPinRepository.saveProfile({
+                  ...baseProfile,
+                  syncPhotos: next,
+                  updatedAt: new Date().toISOString(),
+                });
+                setProfile(updated);
+                if (session?.user) {
+                  await syncProfileToCloud(session.user.id, updated);
+                }
+              }}
+              onSetPassphrase={handleSetPassphrase}
+              onExportBackup={async (passphrase) => {
+                const bundle = await localPinRepository.exportEncryptedBackup(passphrase);
+                return JSON.stringify(bundle, null, 2);
+              }}
+              onRestoreBackup={async (jsonText, passphrase) => {
+                const parsed = JSON.parse(jsonText);
+                const res = await localPinRepository.restoreEncryptedBackup(parsed, passphrase);
+                await refreshLocalState();
+                return res.restoredPins;
+              }}
+              onGoogleSignIn={signInWithGoogle}
+              onSendMagicLink={sendMagicLink}
+              onSyncNow={async () => {
+                if (!session?.user) throw new Error('Sign in required to sync');
+                const res = await syncEncryptedPinsWithCloud(session.user.id, localPinRepository);
+                await refreshLocalState();
+                return `Synced ${res.pushed} uploaded, ${res.pulled} cloud entries.`;
+              }}
+              onSignOut={handleSignOut}
+            />
+          }
           onBack={handleCloseSettings}
           onGoogleSignIn={signInWithGoogle}
           onSendMagicLink={sendMagicLink}
@@ -539,32 +591,69 @@ export function App(): React.JSX.Element {
     );
   }
 
+  // Full-viewport Import & Export screen opened from the top-header Import button
+  if (importOpen) {
+    return (
+      <ImportView
+        pins={pins}
+        onBack={() => setImportOpen(false)}
+        onImportPins={async (batch) => {
+          let count = 0;
+          for (const item of batch) {
+            await localPinRepository.savePin(item);
+            count += 1;
+          }
+          if (session?.user) {
+            void syncEncryptedPinsWithCloud(session.user.id, localPinRepository);
+          }
+          await refreshLocalState();
+          return count;
+        }}
+      />
+    );
+  }
+
   const navItems: Array<{ id: ActiveTab; label: string; icon: typeof BookHeart }> = [
     { id: 'pokedex', label: 'Pokédex', icon: BookHeart },
     { id: 'map', label: 'Map', icon: Globe2 },
     { id: 'rizz', label: 'Rizz AI', icon: Sparkles },
-    { id: 'import', label: 'Import', icon: FileSpreadsheet },
-    { id: 'vault', label: 'Vault', icon: Shield },
   ];
 
   return (
     <div className="min-h-dvh bg-[#0b0d14] text-slate-100">
-      <HudStatsBar
-        stats={hudStats}
-        discreetMode={vaultSettings.discreetMode}
-        isPro={isPro}
-        isSignedIn={Boolean(session?.user)}
-        signedInEmail={session?.user?.email ?? null}
-        onToggleDiscreet={handleToggleDiscreet}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+      {/* Persistently anchored top header, 4-card stats bar, and Sponsored banner */}
+      <div
+        data-testid="sticky-top-chrome"
+        className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 backdrop-blur-md"
+      >
+        <HudStatsBar
+          stats={hudStats}
+          discreetMode={vaultSettings.discreetMode}
+          hideStats={vaultSettings.discreetMode && (activeTab === 'map' || activeTab === 'pokedex')}
+          isPro={isPro}
+          isSignedIn={Boolean(session?.user)}
+          signedInEmail={session?.user?.email ?? null}
+          onOpenImport={() => {
+            setSettingsOpen(false);
+            setImportOpen(true);
+          }}
+          onToggleDiscreet={handleToggleDiscreet}
+          onOpenSettings={() => {
+            setImportOpen(false);
+            setSettingsOpen(true);
+          }}
+        />
+        {!isPro && (
+          <div className="mx-auto max-w-2xl px-4 pb-3">
+            <AdBannerSlot
+              isPro={isPro}
+              onUpgradeClick={() => setActiveTab('rizz')}
+            />
+          </div>
+        )}
+      </div>
 
       <main className="mx-auto max-w-2xl space-y-4 px-4 pt-4 pb-28">
-        <AdBannerSlot
-          isPro={isPro}
-          discreetMode={vaultSettings.discreetMode}
-          onUpgradeClick={() => setActiveTab('rizz')}
-        />
 
         {activeTab === 'pokedex' && (
           <>
@@ -668,7 +757,7 @@ export function App(): React.JSX.Element {
               onUpgradeToPro={handleUpgradeToPro}
               onOpenBillingPortal={handleOpenPortal}
               onRequestCoaching={handleRequestCoaching}
-              onGoToVaultAuth={() => setActiveTab('vault')}
+              onGoToVaultAuth={() => setSettingsOpen(true)}
             />
             <AffiliateSlot
               offers={affiliates}
@@ -677,78 +766,9 @@ export function App(): React.JSX.Element {
             />
           </div>
         )}
-
-        {activeTab === 'import' && (
-          <SpreadsheetPanel
-            pins={pins}
-            onImportPins={async (batch) => {
-              let count = 0;
-              for (const item of batch) {
-                await localPinRepository.savePin(item);
-                count += 1;
-              }
-              if (session?.user) {
-                void syncEncryptedPinsWithCloud(session.user.id, localPinRepository);
-              }
-              await refreshLocalState();
-              return count;
-            }}
-          />
-        )}
-
-        {activeTab === 'vault' && (
-          <VaultPanel
-            vaultSettings={vaultSettings}
-            supabaseConfigured={supabaseConfigured}
-            signedInEmail={session?.user?.email ?? null}
-            syncPhotos={profile?.syncPhotos ?? false}
-            onToggleDiscreet={handleToggleDiscreet}
-            onToggleSyncPhotos={async (next) => {
-              const baseProfile: UserProfile = profile ?? {
-                id: 'local-profile',
-                displayName: session?.user?.email?.split('@')[0] || 'Explorer',
-                homeCountry: 'US',
-                syncPhotos: false,
-                vaultEnabled: vaultSettings.hasPassphraseLock,
-                onboardingCompleted: true,
-                privacyPledgeAccepted: true,
-                updatedAt: new Date().toISOString(),
-              };
-              const updated = await localPinRepository.saveProfile({
-                ...baseProfile,
-                syncPhotos: next,
-                updatedAt: new Date().toISOString(),
-              });
-              setProfile(updated);
-              if (session?.user) {
-                await syncProfileToCloud(session.user.id, updated);
-              }
-            }}
-            onSetPassphrase={handleSetPassphrase}
-            onExportBackup={async (passphrase) => {
-              const bundle = await localPinRepository.exportEncryptedBackup(passphrase);
-              return JSON.stringify(bundle, null, 2);
-            }}
-            onRestoreBackup={async (jsonText, passphrase) => {
-              const parsed = JSON.parse(jsonText);
-              const res = await localPinRepository.restoreEncryptedBackup(parsed, passphrase);
-              await refreshLocalState();
-              return res.restoredPins;
-            }}
-            onGoogleSignIn={signInWithGoogle}
-            onSendMagicLink={sendMagicLink}
-            onSyncNow={async () => {
-              if (!session?.user) throw new Error('Sign in required to sync');
-              const res = await syncEncryptedPinsWithCloud(session.user.id, localPinRepository);
-              await refreshLocalState();
-              return `Synced ${res.pushed} uploaded, ${res.pulled} cloud entries.`;
-            }}
-            onSignOut={handleSignOut}
-          />
-        )}
       </main>
 
-      {/* One-handed Floating Add Button */}
+      {/* One-handed Floating Add Button (cleared above floating dock) */}
       <button
         type="button"
         aria-label="Log new connection"
@@ -757,17 +777,18 @@ export function App(): React.JSX.Element {
           setDroppedCoord(null);
           setEditorOpen(true);
         }}
-        className="fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
+        className="fixed right-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
 
-      {/* Permanently Visible Bottom Navigation Dock */}
+      {/* Floating Glassmorphic Pill Bottom Navigation Dock */}
       <nav
         aria-label="Primary Navigation"
-        className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0d14]/95 px-2 pt-2 backdrop-blur-md"
+        data-testid="floating-dock"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-[#121622]/75 p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/5 backdrop-blur-xl"
       >
-        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
+        <div className="flex items-center gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -777,10 +798,10 @@ export function App(): React.JSX.Element {
                 type="button"
                 onClick={() => setActiveTab(item.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition ${
+                className={`inline-flex min-w-[78px] flex-col items-center justify-center gap-0.5 rounded-full px-3.5 py-1.5 text-[11px] font-medium transition ${
                   isActive
-                    ? 'bg-rose-500/15 text-rose-300'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/30'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />

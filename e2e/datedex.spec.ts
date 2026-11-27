@@ -1,23 +1,49 @@
 /**
  * @module e2e/datedex.spec
  * Mobile-viewport (390x844) Playwright E2E suite verifying Map-first default launch,
- * permanently visible HUD & bottom dock (no Hide HUD/Dock controls), offline IndexedDB
- * pin persistence, Vault / Discreet mode, zero-free-message Rizz Coach gate, and CSV import.
+ * 3-item floating glassmorphic dock (Pokédex, Map, Rizz AI), top-header Import button
+ * to the left of Discreet, Vault embedded inside Settings, sticky Sponsored banner under
+ * the stats bar, offline IndexedDB pin persistence, Discreet mode, and Pro gate.
  */
 import { expect, test } from '@playwright/test';
 
 test.describe('Datédex Mobile PWA E2E', () => {
-  test('opens directly on Map tab with permanent HUD/dock, logs pin offline, toggles Discreet, and verifies Pro gate', async ({
+  test('opens directly on Map tab with floating dock, sticky ad banner, header Import, and Settings Vault', async ({
     page,
   }) => {
     await page.goto('/');
 
-    // 1. Signed-out launch opens directly on the Map tab (no onboarding) with permanent HUD & dock
+    // 1. Signed-out launch opens directly on the Map tab with sticky top chrome & 3-item floating dock
     await expect(page.getByRole('heading', { name: 'Welcome to Datédex' })).toHaveCount(0);
-    await expect(page.getByTestId('hud-dates')).toHaveText('0');
+    const stickyTop = page.getByTestId('sticky-top-chrome');
+    await expect(stickyTop.getByTestId('hud-dates')).toHaveText('0');
+    await expect(stickyTop.getByTestId('ad-banner-slot')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Hide HUD' })).toHaveCount(0);
-    await expect(page.getByTestId('ad-banner-slot')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+
+    // Top-header Import button sits immediately to the left of Discreet
+    const importBtn = stickyTop.getByRole('button', { name: 'Import' });
+    const discreetBtn = stickyTop.getByRole('button', { name: 'Discreet' });
+    await expect(importBtn).toBeVisible();
+    const importBox = await importBtn.boundingBox();
+    const discreetBox = await discreetBtn.boundingBox();
+    expect(importBox).not.toBeNull();
+    expect(discreetBox).not.toBeNull();
+    expect((importBox?.x ?? 0) + (importBox?.width ?? 0)).toBeLessThanOrEqual(
+      (discreetBox?.x ?? 0) + 1,
+    );
+
+    // Floating dock has exactly 3 tabs (Pokédex, Map, Rizz AI) — zero Vault or Import
+    const floatingDock = page.getByTestId('floating-dock');
+    await expect(floatingDock.getByRole('button')).toHaveCount(3);
+    await expect(floatingDock.getByRole('button', { name: 'Pokédex' })).toBeVisible();
+    await expect(floatingDock.getByRole('button', { name: 'Map' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(floatingDock.getByRole('button', { name: 'Rizz AI' })).toBeVisible();
+    await expect(floatingDock.getByRole('button', { name: 'Vault' })).toHaveCount(0);
+    await expect(floatingDock.getByRole('button', { name: 'Import' })).toHaveCount(0);
+
     await expect(page.getByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Toggle drop pin mode' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Search this area' })).toBeVisible();
@@ -44,39 +70,52 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // 3. Verify IndexedDB persistence across full page reload (still defaults to Map tab)
     await page.reload();
     await expect(page.getByTestId('hud-dates')).toHaveText('1');
-    await expect(page.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeVisible();
+    await expect(page.getByTestId('floating-dock').getByRole('button', { name: 'Map' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const mapRegion = page.getByRole('region', { name: 'Datédex Monochrome 3D Map' });
+    await expect(mapRegion).toBeVisible();
+    await expect(mapRegion).toContainText('Sofia');
 
-    // Navigate to Pokédex tab to inspect logged card & verify Discreet masking
-    await page.getByRole('button', { name: 'Pokédex' }).click();
-    await expect(page.getByTestId('pokedex-cards')).toContainText('Sofia');
-
-    // 4. Vault / Discreet mode masks sensitive info and hides ads
+    // 4. On Map page, Discreet mode hides only top statistics and map pin names; sticky ad banner stays visible
     await page.getByRole('button', { name: 'Discreet' }).click();
-    await expect(page.getByTestId('hud-dates2bed')).toHaveText('•••');
-    await expect(page.getByTestId('ad-banner-slot')).toHaveCount(0);
+    await expect(page.getByTestId('hud-stats-grid')).toHaveCount(0);
+    await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
+    await expect(mapRegion).not.toContainText('Sofia');
+
+    // Navigate to Pokédex tab while Discreet mode is active -> top stats stay hidden, sticky ad banner visible & cards masked
+    await page.getByTestId('floating-dock').getByRole('button', { name: 'Pokédex' }).click();
+    await expect(page.getByTestId('hud-stats-grid')).toHaveCount(0);
+    await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
     await expect(page.getByTestId('pokedex-cards')).not.toContainText('Sofia');
 
-    // Turn Discreet mode back off
+    // Turn Discreet mode back off -> top stats and unmasked cards reappear
     await page.getByRole('button', { name: 'Active' }).click();
+    await expect(page.getByTestId('hud-stats-grid')).toBeVisible();
     await expect(page.getByTestId('pokedex-cards')).toContainText('Sofia');
 
-    // 5. Vault tab and Settings view contain zero Hide HUD / Hide Dock toggles
-    await page.getByRole('button', { name: 'Vault' }).click();
-    await expect(page.getByRole('button', { name: 'Hide HUD' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Hide Dock' })).toHaveCount(0);
-
+    // 5. Vault is embedded inside Settings (passphrase, backup export/restore intact; zero Hide HUD/Dock toggles)
     await page.getByRole('button', { name: 'Account & Settings' }).click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
+    const vaultSection = page.getByTestId('settings-vault-section');
+    await expect(vaultSection).toBeVisible();
+    await expect(vaultSection.getByRole('heading', { name: 'Vault, Encryption & Sync' })).toBeVisible();
+    await expect(vaultSection.getByRole('button', { name: 'Download .json Backup' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Hide HUD' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Hide Dock' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to previous view' }).click();
 
-    // 6. Zero-free-message Rizz Coach Pro gate
-    await page.getByRole('button', { name: 'Rizz AI' }).click();
+    // 6. Zero-free-message Rizz Coach Pro gate (sticky ad banner persists across tabs)
+    await page.getByTestId('floating-dock').getByRole('button', { name: 'Rizz AI' }).click();
+    await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
     await expect(page.getByText('Strictly 0 free messages')).toBeVisible();
 
-    // 7. Spreadsheet Import tab renders starter template button
-    await page.getByRole('button', { name: 'Import' }).click();
+    // 7. Top-header Import button opens full-page Import screen with starter template & Back return
+    await page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Import' }).click();
+    await expect(page.getByTestId('import-page')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Starter Template (.xlsx)' })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to previous view' }).click();
+    await expect(page.getByTestId('import-page')).toHaveCount(0);
   });
 });

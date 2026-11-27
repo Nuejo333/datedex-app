@@ -472,7 +472,7 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(screen.getByTestId('map-top-toolbar')).toBeInTheDocument();
   });
 
-  it('masks pin names and strips avatar photos in Vault / Discreet mode via masking.ts', () => {
+  it('hides pin names on the map in Discreet mode while preserving flags, ratings, and non-vault-locked avatars', () => {
     const { rerender } = render(
       <DatedexMap
         markers={SAMPLE_MARKERS}
@@ -496,7 +496,7 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(elenaPin).toHaveTextContent('Marais Velvet');
     expect(elenaPin.querySelector('img')).toBeNull();
 
-    // Enable global Discreet mode -> Sofia is also masked and avatar removed
+    // Enable global Discreet mode -> hides pin names on the map while keeping ratings/flags and non-vault avatars
     rerender(
       <DatedexMap
         markers={SAMPLE_MARKERS}
@@ -509,10 +509,17 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
       />,
     );
 
-    const maskedSofia = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
-    expect(maskedSofia).not.toHaveTextContent('Sofia');
-    expect(maskedSofia).toHaveTextContent('Milan Espresso');
-    expect(maskedSofia.querySelector('img')).toBeNull();
+    const discreetSofia = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
+    expect(discreetSofia).not.toHaveTextContent('Sofia');
+    expect(discreetSofia).not.toHaveTextContent('Milan Espresso');
+    expect(discreetSofia).toHaveTextContent('★4.5');
+    expect(discreetSofia.querySelector('img')).not.toBeNull();
+
+    const discreetElena = screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`);
+    expect(discreetElena).not.toHaveTextContent('Elena');
+    expect(discreetElena).not.toHaveTextContent('Marais Velvet');
+    expect(discreetElena).toHaveTextContent('★5.0');
+    expect(discreetElena.querySelector('img')).toBeNull();
   });
 
   it('clusters nearby pins at globe zoom (< 5) and supports tap-to-drop-pin mode', () => {

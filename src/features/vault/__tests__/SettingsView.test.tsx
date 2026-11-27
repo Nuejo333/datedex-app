@@ -163,4 +163,18 @@ describe('SettingsView', () => {
       'This Google account is already linked to another Datédex account.',
     );
   });
+
+  it('renders the embedded Vault, Encryption & Sync section when vaultSection is provided', () => {
+    render(
+      <SettingsView
+        {...buildProps({
+          vaultSection: <div data-testid="embedded-vault-body">Vault controls ready</div>,
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('settings-vault-section')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Vault, Encryption & Sync' })).toBeInTheDocument();
+    expect(screen.getByTestId('embedded-vault-body')).toBeInTheDocument();
+  });
 });

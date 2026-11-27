@@ -1,9 +1,9 @@
 /**
  * @module features/pokedex/HudStatsBar
- * Sticky top HUD displaying Dates, Countries, Avg Rating, Dates2Bed conversion ratio,
- * and quick one-handed Vault / Discreet & Settings controls.
+ * Top HUD header displaying Dates, Countries, Avg Rating, Dates2Bed conversion ratio,
+ * and quick one-handed Import, Vault / Discreet, and Settings controls.
  */
-import { Settings, Shield, ShieldOff } from 'lucide-react';
+import { FileSpreadsheet, Settings, Shield, ShieldOff } from 'lucide-react';
 import type { HudStats } from '../../domain/analytics/pokedexStats';
 import { formatHudDates2Bed } from '../../domain/vault/masking';
 
@@ -13,29 +13,33 @@ import { formatHudDates2Bed } from '../../domain/vault/masking';
 export interface HudStatsBarProps {
   stats: HudStats;
   discreetMode: boolean;
+  hideStats?: boolean;
   isPro: boolean;
   isSignedIn: boolean;
   signedInEmail?: string | null;
+  onOpenImport: () => void;
   onToggleDiscreet: () => void;
   onOpenSettings: () => void;
 }
 
 /**
- * Renders the top mobile-first HUD stats bar.
- * @param {HudStatsBarProps} props - Calculated HUD metrics and toggle handlers.
+ * Renders the top mobile-first HUD header and 4-card stats bar.
+ * @param {HudStatsBarProps} props - Calculated HUD metrics and header action handlers.
  * @returns {React.JSX.Element} HUD stats bar component.
  */
 export function HudStatsBar({
   stats,
   discreetMode,
+  hideStats = false,
   isPro,
   isSignedIn,
   signedInEmail,
+  onOpenImport,
   onToggleDiscreet,
   onOpenSettings,
 }: HudStatsBarProps): React.JSX.Element {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/90 px-4 pt-3 pb-3 backdrop-blur-md">
+    <header className="px-4 pt-3 pb-3">
       <div className="mx-auto max-w-2xl space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -52,9 +56,20 @@ export function HudStatsBar({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
+              onClick={onOpenImport}
+              aria-label="Import"
+              title="Import Excel or CSV"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+              Import
+            </button>
+
+            <button
+              type="button"
               onClick={onToggleDiscreet}
               aria-pressed={discreetMode}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${discreetMode
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${discreetMode
                   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
                   : 'bg-white/10 text-slate-200 hover:bg-white/15'
                 }`}
@@ -93,43 +108,45 @@ export function HudStatsBar({
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-center">
-          <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-            <div className="text-sm font-bold text-white" data-testid="hud-dates">
-              {stats.totalDates}
+        {!hideStats && (
+          <div data-testid="hud-stats-grid" className="grid grid-cols-4 gap-2 text-center">
+            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
+              <div className="text-sm font-bold text-white" data-testid="hud-dates">
+                {stats.totalDates}
+              </div>
+              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+                Dates
+              </div>
             </div>
-            <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-              Dates
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-            <div className="text-sm font-bold text-rose-300" data-testid="hud-countries">
-              {stats.countriesCount}
+            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
+              <div className="text-sm font-bold text-rose-300" data-testid="hud-countries">
+                {stats.countriesCount}
+              </div>
+              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+                Countries
+              </div>
             </div>
-            <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-              Countries
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-            <div className="text-sm font-bold text-amber-300" data-testid="hud-avg-rating">
-              {stats.avgRating.toFixed(1)}
+            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
+              <div className="text-sm font-bold text-amber-300" data-testid="hud-avg-rating">
+                {stats.avgRating.toFixed(1)}
+              </div>
+              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+                Avg ★
+              </div>
             </div>
-            <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-              Avg ★
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-            <div className="text-sm font-bold text-emerald-300" data-testid="hud-dates2bed">
-              {formatHudDates2Bed(stats.dates2BedPercent, discreetMode)}
-            </div>
-            <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-              Dates2Bed
+            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
+              <div className="text-sm font-bold text-emerald-300" data-testid="hud-dates2bed">
+                {formatHudDates2Bed(stats.dates2BedPercent, discreetMode)}
+              </div>
+              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+                Dates2Bed
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

@@ -1,7 +1,8 @@
 /**
  * @module features/monetization/AdBannerSlot
  * Free-tier banner ad slot abstracted over `IAdProvider`.
- * Completely disabled for Pro subscribers and whenever Vault / Discreet mode is active.
+ * Disabled only for Pro subscribers; always remains visible on the free tier
+ * even when Vault / Discreet mode is active.
  */
 import { useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
@@ -13,24 +14,22 @@ import { recordMonetizationEvent } from '../../platform/supabase/monetization';
  */
 export interface AdBannerSlotProps {
   isPro: boolean;
-  discreetMode: boolean;
   slot?: string;
   onUpgradeClick: () => void;
 }
 
 /**
- * Renders a free-tier banner ad slot (hidden for Pro users and Vault / Discreet mode).
- * @param {AdBannerSlotProps} props - Subscription/discreet gates and upgrade handler.
- * @returns {React.JSX.Element | null} Banner slot or null when hidden.
+ * Renders a free-tier banner ad slot (hidden only for Pro users; never hidden by Discreet mode).
+ * @param {AdBannerSlotProps} props - Subscription gate and upgrade handler.
+ * @returns {React.JSX.Element | null} Banner slot or null for Pro users.
  */
 export function AdBannerSlot({
   isPro,
-  discreetMode,
   slot = 'pokedex_banner',
   onUpgradeClick,
 }: AdBannerSlotProps): React.JSX.Element | null {
   const provider = getAdProviderConfig();
-  const visible = !isPro && !discreetMode;
+  const visible = !isPro;
 
   useEffect(() => {
     if (!visible) return;

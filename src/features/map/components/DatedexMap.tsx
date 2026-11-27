@@ -191,6 +191,8 @@ export function clusterMapMarkers(markers: MapMarker[], zoom: number): MapRender
 function buildPinMarkerElement(
   marker: MapMarker,
   display: DisplayPin,
+  rawPhotoUrl: string | null,
+  discreetMode: boolean,
   isSelected: boolean,
 ): HTMLButtonElement {
   const button = document.createElement('button');
@@ -199,7 +201,9 @@ function buildPinMarkerElement(
   button.dataset.masked = String(display.isMasked);
   button.setAttribute(
     'aria-label',
-    `${display.displayName}, ${display.displayCity}, rated ${marker.rating.toFixed(1)}`,
+    discreetMode
+      ? `${marker.city}, rated ${marker.rating.toFixed(1)}`
+      : `${display.displayName}, ${display.displayCity}, rated ${marker.rating.toFixed(1)}`,
   );
   button.className = [
     'group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
@@ -209,10 +213,11 @@ function buildPinMarkerElement(
       : 'border-white/25 bg-[#111111]/95 text-white hover:scale-105 hover:border-white/60',
   ].join(' ');
 
-  // Only render avatar image when unmasked (Vault / Discreet mode sets displayPhotoUrl to null)
-  if (!display.isMasked && display.displayPhotoUrl) {
+  // Vault-locked pins always hide avatars; global Discreet mode on the map only hides pin names
+  const photoUrl = marker.isVaultLocked ? null : (rawPhotoUrl ?? display.displayPhotoUrl);
+  if (photoUrl) {
     const avatar = document.createElement('img');
-    avatar.src = display.displayPhotoUrl;
+    avatar.src = photoUrl;
     avatar.alt = '';
     avatar.className = 'h-4 w-4 rounded-full object-cover grayscale';
     button.appendChild(avatar);
@@ -223,10 +228,13 @@ function buildPinMarkerElement(
   flagSpan.textContent = getCountryFlag(marker.nationalityCode);
   button.appendChild(flagSpan);
 
-  const nameSpan = document.createElement('span');
-  nameSpan.className = 'max-w-[76px] truncate';
-  nameSpan.textContent = display.displayName;
-  button.appendChild(nameSpan);
+  // On the map page, Discreet mode hides names on pins while keeping flags and ratings visible
+  if (!discreetMode) {
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'max-w-[76px] truncate';
+    nameSpan.textContent = display.displayName;
+    button.appendChild(nameSpan);
+  }
 
   const ratingSpan = document.createElement('span');
   ratingSpan.className = isSelected
@@ -510,9 +518,12 @@ export function DatedexMap({
         mountedMarkersRef.current.push({ marker: mapboxMarker, element, onClick });
       } else {
         const display = resolveMaskedMapPin(item.marker, pinLookup, discreetMode);
+        const rawPhotoUrl = pinLookup.get(item.marker.id)?.photoDataUrl ?? null;
         const element = buildPinMarkerElement(
           item.marker,
           display,
+          rawPhotoUrl,
+          discreetMode,
           item.marker.id === selectedPinId,
         );
         const onClick = (): void => {
@@ -953,7 +964,9 @@ export function DatedexMap({
                 }`}
               >
                 <span>{getCountryFlag(marker.nationalityCode)}</span>
-                <span className="max-w-[70px] truncate">{display.displayName}</span>
+                {!discreetMode && (
+                  <span className="max-w-[70px] truncate">{display.displayName}</span>
+                )}
                 <span className="font-mono text-[10px] opacity-80">★{marker.rating.toFixed(1)}</span>
               </button>
             );

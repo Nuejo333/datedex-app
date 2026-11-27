@@ -5,7 +5,7 @@
  */
 import { useState, type ChangeEvent } from 'react';
 import * as XLSX from 'xlsx';
-import { Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, Upload } from 'lucide-react';
 import type { DecryptedPin, PinInput } from '../../domain/models/pin';
 import {
   buildStarterTemplateRows,
@@ -246,6 +246,47 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
           {errorMsg}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Props for `ImportView`.
+ */
+export interface ImportViewProps extends SpreadsheetPanelProps {
+  onBack: () => void;
+}
+
+/**
+ * Full-viewport Import & Export screen opened from the top-header Import button
+ * with a sticky Back return path to the active tab.
+ * @param {ImportViewProps} props - Active pins, batch import callback, and back handler.
+ * @returns {React.JSX.Element} Full-page Import screen.
+ */
+export function ImportView({ pins, onImportPins, onBack }: ImportViewProps): React.JSX.Element {
+  return (
+    <div data-testid="import-page" className="min-h-dvh bg-[#0b0d14] text-slate-100">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to previous view"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            Back
+          </button>
+
+          <h1 className="text-base font-bold tracking-tight text-white">Import &amp; Export</h1>
+
+          <span className="w-16" aria-hidden="true" />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-2xl px-4 py-6 pb-14">
+        <SpreadsheetPanel pins={pins} onImportPins={onImportPins} />
+      </main>
     </div>
   );
 }

@@ -1,10 +1,10 @@
 /**
  * @module features/vault/SettingsView
- * Full-viewport dark-mode Settings view organized into four responsive cards:
+ * Full-viewport dark-mode Settings view organized into five responsive cards:
  * Account & Authentication, Connected Accounts (Google identity pairing),
- * Plan & Billing, and Privacy & Preferences.
+ * Plan & Billing, Privacy & Preferences, and Vault, Encryption & Sync.
  */
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
   Database,
   Link2,
   Loader2,
+  Lock,
   LogOut,
   Mail,
   Shield,
@@ -38,6 +39,7 @@ export interface SettingsViewProps {
   hasPassphraseLock: boolean;
   localPinCount: number;
   authRedirectError?: string | null;
+  vaultSection?: ReactNode;
   onBack: () => void;
   onGoogleSignIn: () => Promise<void>;
   onSendMagicLink: (email: string) => Promise<void>;
@@ -64,6 +66,7 @@ export function SettingsView({
   hasPassphraseLock,
   localPinCount,
   authRedirectError = null,
+  vaultSection,
   onBack,
   onGoogleSignIn,
   onSendMagicLink,
@@ -600,7 +603,7 @@ export function SettingsView({
               <div className="space-y-0.5">
                 <p className="text-xs font-semibold text-white">Discreet Mode</p>
                 <p className="text-[11px] text-slate-400">
-                  Masks names, photos, intimacy stats, and ad slots in public
+                  Hides map stats and pin names, and masks sensitive details in public
                   {hasPassphraseLock ? ' (Vault passphrase protected).' : '.'}
                 </p>
               </div>
@@ -645,6 +648,30 @@ export function SettingsView({
             </div>
           </div>
         </section>
+
+        {/* 5. Vault, Encryption & Cloud Sync Card */}
+        {vaultSection && (
+          <section
+            aria-labelledby="settings-vault-heading"
+            data-testid="settings-vault-section"
+            className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                <Lock className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div>
+                <h2 id="settings-vault-heading" className="text-sm font-bold text-white">
+                  Vault, Encryption &amp; Sync
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Local passphrase lock, encrypted JSON backup/restore, and cloud pin sync.
+                </p>
+              </div>
+            </div>
+            {vaultSection}
+          </section>
+        )}
       </main>
     </div>
   );
