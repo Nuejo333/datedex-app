@@ -95,13 +95,45 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(page.getByTestId('hud-stats-grid')).toBeVisible();
     await expect(page.getByTestId('pokedex-cards')).toContainText('Sofia');
 
-    // 5. Vault is embedded inside Settings (passphrase, backup export/restore intact; zero Hide HUD/Dock toggles)
+    // 5. Settings pins Plan & Billing first (non-collapsible), supports collapsing other cards, and switches language
     await page.getByRole('button', { name: 'Account & Settings' }).click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
+    const firstSectionTestId = await page
+      .locator('[data-testid="settings-page"] main > section')
+      .first()
+      .getAttribute('data-testid');
+    expect(firstSectionTestId).toBe('plan-billing-section');
+
+    // Collapse & expand Vault section via aria-expanded chevron toggle
     const vaultSection = page.getByTestId('settings-vault-section');
     await expect(vaultSection).toBeVisible();
     await expect(vaultSection.getByRole('heading', { name: 'Vault, Encryption & Sync' })).toBeVisible();
     await expect(vaultSection.getByRole('button', { name: 'Download .json Backup' })).toBeVisible();
+    const vaultToggle = page.getByRole('button', { name: 'Toggle Vault, Encryption & Sync section' });
+    await expect(vaultToggle).toHaveAttribute('aria-expanded', 'true');
+    await vaultToggle.click();
+    await expect(vaultToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(vaultSection.getByRole('button', { name: 'Download .json Backup' })).toHaveCount(0);
+    await vaultToggle.click();
+    await expect(vaultToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(vaultSection.getByRole('button', { name: 'Download .json Backup' })).toBeVisible();
+
+    // Switch language to Italian and confirm UI chrome translates while special terms stay untranslated
+    await page.getByTestId('language-option-it').click();
+    await expect(page.getByRole('heading', { name: 'Impostazioni' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Piano e Fatturazione' })).toBeVisible();
+    await page.getByRole('button', { name: 'Torna alla vista precedente' }).click();
+    await expect(page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Importa' })).toBeVisible();
+    await expect(page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Discreet' })).toBeVisible();
+    await expect(page.getByTestId('floating-dock').getByRole('button', { name: 'Mappa' })).toBeVisible();
+    await expect(page.getByTestId('floating-dock').getByRole('button', { name: 'Pokédex' })).toBeVisible();
+    await expect(page.getByTestId('floating-dock').getByRole('button', { name: 'Rizz AI' })).toBeVisible();
+    await expect(page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Go Pro' })).toBeVisible();
+
+    // Switch back to English for remaining E2E checks
+    await page.getByRole('button', { name: 'Account e Impostazioni' }).click();
+    await page.getByTestId('language-option-en').click();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Hide HUD' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Hide Dock' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to previous view' }).click();

@@ -5,9 +5,10 @@
  * Connected Accounts (Google Connected vs Pair Google Account), Plan & Billing,
  * and Privacy & Preferences (Discreet Mode + Local Cache Status).
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../../../platform/i18n/LanguageContext';
 import { SettingsView, type SettingsViewProps } from '../SettingsView';
 
 function buildProps(overrides: Partial<SettingsViewProps> = {}): SettingsViewProps {
@@ -176,5 +177,100 @@ describe('SettingsView', () => {
     expect(screen.getByTestId('settings-vault-section')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Vault, Encryption & Sync' })).toBeInTheDocument();
     expect(screen.getByTestId('embedded-vault-body')).toBeInTheDocument();
+  });
+
+  it('pins Plan & Billing first without a collapse toggle and toggles each remaining section independently', async () => {
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider initialLocale="en">
+        <SettingsView
+          {...buildProps({
+            vaultSection: <div data-testid="embedded-vault-body">Vault controls ready</div>,
+          })}
+        />
+      </LanguageProvider>,
+    );
+
+    const main = screen.getByRole('main');
+    const sections = Array.from(main.querySelectorAll(':scope > section'));
+    expect(sections.map((el) => el.getAttribute('data-testid'))).toEqual([
+      'plan-billing-section',
+      'language-section',
+      'account-auth-section',
+      'connected-accounts-section',
+      'privacy-preferences-section',
+      'settings-vault-section',
+    ]);
+
+    // Plan & Billing is always visible and has NO collapse toggle
+    const billingSection = screen.getByTestId('plan-billing-section');
+    expect(within(billingSection).queryByRole('button', { name: /Toggle/i })).not.toBeInTheDocument();
+
+    // Every remaining section has an aria-expanded toggle controlling its body independently
+    const collapsibleCases = [
+      {
+        toggleName: 'Toggle Language section',
+        bodyTestId: 'language-section-body',
+      },
+      {
+        toggleName: 'Toggle Account & Authentication section',
+        bodyTestId: 'account-auth-section-body',
+      },
+      {
+        toggleName: 'Toggle Connected Accounts section',
+        bodyTestId: 'connected-accounts-section-body',
+      },
+      {
+        toggleName: 'Toggle Privacy & Preferences section',
+        bodyTestId: 'privacy-preferences-section-body',
+      },
+      {
+        toggleName: 'Toggle Vault, Encryption & Sync section',
+        bodyTestId: 'settings-vault-section-body',
+      },
+    ];
+
+    for (const item of collapsibleCases) {
+      const toggleBtn = screen.getByRole('button', { name: item.toggleName });
+      expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByTestId(item.bodyTestId)).toBeInTheDocument();
+
+      await user.click(toggleBtn);
+      expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId(item.bodyTestId)).not.toBeInTheDocument();
+
+      await user.click(toggleBtn);
+      expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByTestId(item.bodyTestId)).toBeInTheDocument();
+    }
+  });
+
+  it('switches UI language from the Language section while preserving brand terms', async () => {
+    const user = userEvent.setup();
+    render(
+      <LanguageProvider initialLocale="en">
+        <SettingsView
+          {...buildProps({
+            vaultSection: <div data-testid="embedded-vault-body">Vault controls ready</div>,
+          })}
+        />
+      </LanguageProvider>,
+    );
+
+    // Switch to Italian
+    await user.click(screen.getByTestId('language-option-it'));
+    expect(screen.getByRole('heading', { name: 'Impostazioni' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Piano e Fatturazione' })).toBeInTheDocument();
+    expect(screen.getByText(/Datédex Pro/)).toBeInTheDocument();
+    expect(screen.getByText(/Rizz AI/)).toBeInTheDocument();
+    expect(screen.getByText('Modalità Discreet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Vault, Crittografia e Sincronizzazione' })).toBeInTheDocument();
+
+    // Switch to Spanish
+    await user.click(screen.getByTestId('language-option-es'));
+    expect(screen.getByRole('heading', { name: 'Ajustes' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Plan y Facturación' })).toBeInTheDocument();
+    expect(screen.getByText('Modo Discreet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Vault, Cifrado y Sincronización' })).toBeInTheDocument();
   });
 });

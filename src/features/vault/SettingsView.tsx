@@ -1,18 +1,21 @@
 /**
  * @module features/vault/SettingsView
- * Full-viewport dark-mode Settings view organized into five responsive cards:
- * Account & Authentication, Connected Accounts (Google identity pairing),
- * Plan & Billing, Privacy & Preferences, and Vault, Encryption & Sync.
+ * Full-viewport dark-mode Settings view with Plan & Billing pinned permanently
+ * at the top (non-collapsible), followed by independently collapsible cards for
+ * Language, Account & Authentication, Connected Accounts, Privacy & Preferences,
+ * and Vault, Encryption & Sync.
  */
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Cloud,
   CloudOff,
   CreditCard,
   Crown,
   Database,
+  Globe,
   Link2,
   Loader2,
   Lock,
@@ -23,8 +26,12 @@ import {
   Sparkles,
   UserCheck,
 } from 'lucide-react';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
+import { SUPPORTED_LOCALES } from '../../platform/i18n/translations';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type CollapsibleSectionKey = 'language' | 'account' | 'connected' | 'privacy' | 'vault';
 
 /**
  * Props for `SettingsView`.
@@ -50,9 +57,65 @@ export interface SettingsViewProps {
   onToggleDiscreet: () => void;
 }
 
+interface CollapsibleCardHeaderProps {
+  headingId: string;
+  panelId: string;
+  icon: ReactNode;
+  iconBgClass: string;
+  title: string;
+  subtitle: string;
+  expanded: boolean;
+  toggleAriaLabel: string;
+  onToggle: () => void;
+}
+
+function CollapsibleCardHeader({
+  headingId,
+  panelId,
+  icon,
+  iconBgClass,
+  title,
+  subtitle,
+  expanded,
+  toggleAriaLabel,
+  onToggle,
+}: CollapsibleCardHeaderProps): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBgClass}`}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <h2 id={headingId} className="text-sm font-bold text-white">
+            {title}
+          </h2>
+          <p className="text-xs text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        aria-label={toggleAriaLabel}
+        onClick={onToggle}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-300 transition hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400"
+      >
+        <ChevronDown
+          className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+    </div>
+  );
+}
+
 /**
- * Renders the full-viewport Datédex Settings screen with a sticky Back header
- * and four structured dark-mode settings cards.
+ * Renders the full-viewport Datédex Settings screen with Plan & Billing pinned
+ * permanently at the top and collapsible cards for all remaining sections.
  * @param {SettingsViewProps} props - Auth, pairing, billing, privacy state, and callbacks.
  * @returns {React.JSX.Element} Full-page Settings view.
  */
@@ -76,7 +139,16 @@ export function SettingsView({
   onOpenBillingPortal,
   onToggleDiscreet,
 }: SettingsViewProps): React.JSX.Element {
+  const { locale, setLocale, t } = useTranslation();
   const emailInputRef = useRef<HTMLInputElement>(null);
+
+  const [expandedSections, setExpandedSections] = useState<Record<CollapsibleSectionKey, boolean>>({
+    language: true,
+    account: true,
+    connected: true,
+    privacy: true,
+    vault: true,
+  });
 
   const [email, setEmail] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
@@ -99,13 +171,20 @@ export function SettingsView({
     setBusyAction(null);
   }, [signedInEmail, authRedirectError]);
 
+  const toggleSection = (key: CollapsibleSectionKey): void => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   const validateEmail = (value: string): string | null => {
     const trimmed = value.trim();
     if (!trimmed) {
-      return 'Error: Please enter your email address.';
+      return t('settings.account.emailRequired');
     }
     if (!EMAIL_PATTERN.test(trimmed)) {
-      return 'Error: Enter an email address in the format you@example.com.';
+      return t('settings.account.emailInvalid');
     }
     return null;
   };
@@ -117,7 +196,7 @@ export function SettingsView({
     try {
       await onGoogleSignIn();
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Google sign-in failed.');
+      setAuthError(err instanceof Error ? err.message : t('settings.account.googleError'));
     } finally {
       setBusyAction(null);
     }
@@ -145,7 +224,7 @@ export function SettingsView({
       setEmail('');
       setEmailTouched(false);
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Failed to send magic link.');
+      setAuthError(err instanceof Error ? err.message : t('settings.account.magicError'));
     } finally {
       setBusyAction(null);
     }
@@ -157,7 +236,7 @@ export function SettingsView({
     try {
       await onLinkGoogle();
     } catch (err) {
-      setLinkingError(err instanceof Error ? err.message : 'Unable to pair Google account.');
+      setLinkingError(err instanceof Error ? err.message : t('settings.connected.linkError'));
     } finally {
       setBusyAction(null);
     }
@@ -169,7 +248,7 @@ export function SettingsView({
     try {
       await onSignOut();
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Sign out failed.');
+      setAuthError(err instanceof Error ? err.message : t('settings.account.signOutError'));
     } finally {
       setBusyAction(null);
     }
@@ -185,7 +264,7 @@ export function SettingsView({
         await onUpgradeToPro();
       }
     } catch (err) {
-      setBillingError(err instanceof Error ? err.message : 'Unable to open billing session.');
+      setBillingError(err instanceof Error ? err.message : t('settings.billing.error'));
     } finally {
       setBusyAction(null);
     }
@@ -194,25 +273,29 @@ export function SettingsView({
   const showEmailError = Boolean(emailTouched && emailError);
   const isBusy = busyAction !== null;
 
+  const localCacheText =
+    localPinCount === 0
+      ? t('settings.privacy.cacheEmpty')
+      : localPinCount === 1
+        ? t('settings.privacy.cacheSingle')
+        : t('settings.privacy.cachePlural', { count: localPinCount });
+
   return (
-    <div
-      data-testid="settings-page"
-      className="min-h-dvh bg-[#0b0d14] text-slate-100"
-    >
+    <div data-testid="settings-page" className="min-h-dvh bg-[#0b0d14] text-slate-100">
       {/* Sticky Full-Page Header */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to previous view"
+            aria-label={t('common.backAria')}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            Back
+            {t('common.back')}
           </button>
 
-          <h1 className="text-base font-bold tracking-tight text-white">Settings</h1>
+          <h1 className="text-base font-bold tracking-tight text-white">{t('settings.title')}</h1>
 
           <span
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
@@ -221,299 +304,28 @@ export function SettingsView({
                 : 'bg-white/10 text-slate-300'
             }`}
           >
-            {signedInEmail ? 'Signed In' : 'Signed Out'}
+            {signedInEmail ? t('settings.signedIn') : t('settings.signedOut')}
           </span>
         </div>
       </header>
 
       <main className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-14">
-        {/* 1. Account & Authentication Card */}
-        <section
-          aria-labelledby="settings-account-heading"
-          data-testid="account-auth-section"
-          className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400">
-              <UserCheck className="h-4 w-4" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 id="settings-account-heading" className="text-sm font-bold text-white">
-                Account &amp; Authentication
-              </h2>
-              <p className="text-xs text-slate-400">
-                Passwordless sign-in via Google OAuth or Email Magic Link — zero passwords stored.
-              </p>
-            </div>
-          </div>
-
-          {signedInEmail ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-[11px] font-semibold tracking-wide text-emerald-300 uppercase">
-                    Active Account
-                  </p>
-                  <p
-                    data-testid="account-signed-in-email"
-                    className="truncate text-sm font-semibold text-white"
-                  >
-                    {signedInEmail}
-                  </p>
-                  <p className="inline-flex items-center gap-1.5 text-xs text-slate-300">
-                    <Cloud className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
-                    Encrypted Cloud Sync enabled
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => void handleSignOutClick()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-50"
-                >
-                  {busyAction === 'signout' ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                  {busyAction === 'signout' ? 'Signing out...' : 'Sign Out'}
-                </button>
-              </div>
-
-              {authError && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
-                >
-                  {authError}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {!supabaseConfigured && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-                  <CloudOff className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
-                  <p>
-                    Cloud authentication is not configured in this build. You can continue using
-                    Datédex 100% offline with local AES-GCM encryption.
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                disabled={!supabaseConfigured || isBusy}
-                onClick={() => void handleGoogleClick()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {busyAction === 'google' && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                )}
-                {busyAction === 'google' ? 'Redirecting to Google...' : 'Continue with Google'}
-              </button>
-
-              <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
-                <span>or sign in with email</span>
-                <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
-              </div>
-
-              <form
-                noValidate
-                onSubmit={(event) => void handleMagicLinkSubmit(event)}
-                className="space-y-3"
-              >
-                <div className="space-y-1">
-                  <label
-                    htmlFor="settings-magic-email"
-                    className="block text-xs font-medium text-slate-200"
-                  >
-                    Email Address
-                  </label>
-                  {/* Format hint placed above the input so autofill popovers do not obscure it */}
-                  <span id="settings-email-hint" className="block text-[11px] text-slate-400">
-                    We will send a one-time magic link (format: you@example.com).
-                  </span>
-                  <input
-                    ref={emailInputRef}
-                    id="settings-magic-email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="username"
-                    spellCheck={false}
-                    enterKeyHint="done"
-                    disabled={!supabaseConfigured || isBusy}
-                    value={email}
-                    aria-invalid={showEmailError ? 'true' : 'false'}
-                    aria-describedby={
-                      showEmailError
-                        ? 'settings-email-hint settings-email-error'
-                        : 'settings-email-hint'
-                    }
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setEmail(nextValue);
-                      if (emailTouched) {
-                        setEmailError(validateEmail(nextValue));
-                      }
-                    }}
-                    onBlur={() => {
-                      if (email.trim().length > 0) {
-                        setEmailTouched(true);
-                        setEmailError(validateEmail(email));
-                      }
-                    }}
-                    placeholder="you@example.com"
-                    className={`dd-input text-xs ${showEmailError ? 'user-invalid-fallback' : ''}`}
-                  />
-                  {showEmailError && (
-                    <p id="settings-email-error" className="mt-1 text-xs text-rose-300">
-                      {emailError}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!supabaseConfigured || isBusy}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {busyAction === 'magic' ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                  {busyAction === 'magic' ? 'Sending Magic Link...' : 'Send Magic Link'}
-                </button>
-              </form>
-
-              {magicLinkSentTo && (
-                <div
-                  role="status"
-                  className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-2.5 text-xs text-emerald-200"
-                >
-                  <CheckCircle2
-                    className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400"
-                    aria-hidden="true"
-                  />
-                  <p>
-                    <strong>Check your email for the magic link.</strong> We sent a one-time sign-in
-                    link to <span className="font-semibold">{magicLinkSentTo}</span>.
-                  </p>
-                </div>
-              )}
-
-              {authError && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
-                >
-                  {authError}
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* 2. Connected Accounts Card */}
-        <section
-          aria-labelledby="settings-connected-heading"
-          data-testid="connected-accounts-section"
-          className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400">
-              <Link2 className="h-4 w-4" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 id="settings-connected-heading" className="text-sm font-bold text-white">
-                Connected Accounts
-              </h2>
-              <p className="text-xs text-slate-400">
-                Link sign-in providers to access your Datédex with one tap.
-              </p>
-            </div>
-          </div>
-
-          {signedInEmail ? (
-            <div className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-semibold text-white">Google</p>
-                  <p className="text-[11px] text-slate-400">
-                    {isGooglePaired
-                      ? 'Paired with your Datédex account for one-tap Google sign-in.'
-                      : 'Pair Google so you can sign in with either Magic Link or Google.'}
-                  </p>
-                </div>
-
-                {identitiesLoading ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                    Checking...
-                  </span>
-                ) : isGooglePaired ? (
-                  <span
-                    data-testid="google-connected-badge"
-                    className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30"
-                  >
-                    <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-                    Google Connected
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={!supabaseConfigured || isBusy || identitiesLoading}
-                    onClick={() => void handleLinkGoogleClick()}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {busyAction === 'link' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                    {busyAction === 'link' ? 'Connecting Google...' : 'Pair Google Account'}
-                  </button>
-                )}
-              </div>
-
-              {linkingError && (
-                <p
-                  role="alert"
-                  className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
-                >
-                  {linkingError}
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="rounded-xl border border-white/10 bg-slate-900/50 p-3.5 text-xs text-slate-400">
-              Sign in above to view your connected sign-in methods or pair a Google account.
-            </p>
-          )}
-        </section>
-
-        {/* 3. Plan & Billing Card */}
+        {/* 1. Plan & Billing Card (Pinned permanently at the top — non-collapsible) */}
         <section
           aria-labelledby="settings-billing-heading"
           data-testid="plan-billing-section"
-          className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          className="space-y-3 rounded-2xl border border-amber-400/20 bg-[#121622] p-5"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
                 <Crown className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
                 <h2 id="settings-billing-heading" className="text-sm font-bold text-white">
-                  Plan &amp; Billing
+                  {t('settings.billing.title')}
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Manage your subscription tier and Stripe billing portal.
-                </p>
+                <p className="text-xs text-slate-400">{t('settings.billing.subtitle')}</p>
               </div>
             </div>
 
@@ -526,15 +338,13 @@ export function SettingsView({
               }`}
             >
               {isPro && <Crown className="h-3 w-3" aria-hidden="true" />}
-              {isPro ? 'Datédex Pro €2.99/mo' : 'Free Tier'}
+              {isPro ? t('settings.billing.tierPro') : t('settings.billing.tierFree')}
             </span>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
             <p className="max-w-md text-xs text-slate-300">
-              {isPro
-                ? 'Active Datédex Pro subscription (€2.99/mo) — AI Rizz Coach and ad-free browsing unlocked.'
-                : 'Upgrade to Datédex Pro (€2.99/mo) to unlock the AI Rizz Coach and an ad-free experience.'}
+              {isPro ? t('settings.billing.proCopy') : t('settings.billing.freeCopy')}
             </p>
 
             {signedInEmail ? (
@@ -556,14 +366,14 @@ export function SettingsView({
                   <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
                 {busyAction === 'billing'
-                  ? 'Opening Stripe...'
+                  ? t('settings.billing.openingStripe')
                   : isPro
-                    ? 'Manage Billing'
-                    : 'Upgrade to Pro'}
+                    ? t('settings.billing.manage')
+                    : t('settings.billing.upgrade')}
               </button>
             ) : (
               <span className="text-[11px] font-medium text-amber-300">
-                Sign in above to upgrade
+                {t('settings.billing.signInPrompt')}
               </span>
             )}
           </div>
@@ -578,98 +388,456 @@ export function SettingsView({
           )}
         </section>
 
-        {/* 4. Privacy & Preferences Card */}
+        {/* 2. Language Card (Collapsible) */}
+        <section
+          aria-labelledby="settings-language-heading"
+          data-testid="language-section"
+          className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+        >
+          <CollapsibleCardHeader
+            headingId="settings-language-heading"
+            panelId="settings-language-panel"
+            icon={<Globe className="h-4 w-4" aria-hidden="true" />}
+            iconBgClass="bg-indigo-500/15 text-indigo-300"
+            title={t('settings.language.title')}
+            subtitle={t('settings.language.subtitle')}
+            expanded={expandedSections.language}
+            toggleAriaLabel={t('settings.toggleSectionAria', {
+              section: t('settings.language.title'),
+            })}
+            onToggle={() => toggleSection('language')}
+          />
+
+          {expandedSections.language && (
+            <div
+              id="settings-language-panel"
+              data-testid="language-section-body"
+              role="radiogroup"
+              aria-label={t('settings.language.groupAria')}
+              className="grid grid-cols-3 gap-2"
+            >
+              {SUPPORTED_LOCALES.map((option) => {
+                const selected = locale === option.code;
+                return (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    data-testid={`language-option-${option.code}`}
+                    onClick={() => setLocale(option.code)}
+                    className={`flex flex-col items-center justify-center rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${
+                      selected
+                        ? 'border-rose-400/60 bg-rose-500/15 text-white ring-1 ring-rose-400/40'
+                        : 'border-white/10 bg-slate-900/60 text-slate-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <span>{option.nativeLabel}</span>
+                    <span className="mt-0.5 text-[10px] font-medium text-slate-400 uppercase">
+                      {option.code}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* 3. Account & Authentication Card (Collapsible) */}
+        <section
+          aria-labelledby="settings-account-heading"
+          data-testid="account-auth-section"
+          className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+        >
+          <CollapsibleCardHeader
+            headingId="settings-account-heading"
+            panelId="settings-account-panel"
+            icon={<UserCheck className="h-4 w-4" aria-hidden="true" />}
+            iconBgClass="bg-rose-500/15 text-rose-400"
+            title={t('settings.account.title')}
+            subtitle={t('settings.account.subtitle')}
+            expanded={expandedSections.account}
+            toggleAriaLabel={t('settings.toggleSectionAria', {
+              section: t('settings.account.title'),
+            })}
+            onToggle={() => toggleSection('account')}
+          />
+
+          {expandedSections.account && (
+            <div id="settings-account-panel" data-testid="account-auth-section-body">
+              {signedInEmail ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-[11px] font-semibold tracking-wide text-emerald-300 uppercase">
+                        {t('settings.account.activeAccount')}
+                      </p>
+                      <p
+                        data-testid="account-signed-in-email"
+                        className="truncate text-sm font-semibold text-white"
+                      >
+                        {signedInEmail}
+                      </p>
+                      <p className="inline-flex items-center gap-1.5 text-xs text-slate-300">
+                        <Cloud className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+                        {t('settings.account.cloudSyncEnabled')}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void handleSignOutClick()}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-50"
+                    >
+                      {busyAction === 'signout' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {busyAction === 'signout'
+                        ? t('settings.account.signingOut')
+                        : t('settings.account.signOut')}
+                    </button>
+                  </div>
+
+                  {authError && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                    >
+                      {authError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {!supabaseConfigured && (
+                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                      <CloudOff
+                        className="mt-0.5 h-4 w-4 shrink-0 text-amber-400"
+                        aria-hidden="true"
+                      />
+                      <p>{t('settings.account.offlineNotice')}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={!supabaseConfigured || isBusy}
+                    onClick={() => void handleGoogleClick()}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busyAction === 'google' && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    )}
+                    {busyAction === 'google'
+                      ? t('settings.account.redirectingGoogle')
+                      : t('settings.account.continueGoogle')}
+                  </button>
+
+                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                    <span>{t('settings.account.orEmail')}</span>
+                    <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                  </div>
+
+                  <form
+                    noValidate
+                    onSubmit={(event) => void handleMagicLinkSubmit(event)}
+                    className="space-y-3"
+                  >
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="settings-magic-email"
+                        className="block text-xs font-medium text-slate-200"
+                      >
+                        {t('settings.account.emailLabel')}
+                      </label>
+                      {/* Format hint placed above the input so autofill popovers do not obscure it */}
+                      <span id="settings-email-hint" className="block text-[11px] text-slate-400">
+                        {t('settings.account.emailHint')}
+                      </span>
+                      <input
+                        ref={emailInputRef}
+                        id="settings-magic-email"
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="username"
+                        spellCheck={false}
+                        enterKeyHint="done"
+                        disabled={!supabaseConfigured || isBusy}
+                        value={email}
+                        aria-invalid={showEmailError ? 'true' : 'false'}
+                        aria-describedby={
+                          showEmailError
+                            ? 'settings-email-hint settings-email-error'
+                            : 'settings-email-hint'
+                        }
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setEmail(nextValue);
+                          if (emailTouched) {
+                            setEmailError(validateEmail(nextValue));
+                          }
+                        }}
+                        onBlur={() => {
+                          if (email.trim().length > 0) {
+                            setEmailTouched(true);
+                            setEmailError(validateEmail(email));
+                          }
+                        }}
+                        placeholder="you@example.com"
+                        className={`dd-input text-xs ${showEmailError ? 'user-invalid-fallback' : ''}`}
+                      />
+                      {showEmailError && (
+                        <p id="settings-email-error" className="mt-1 text-xs text-rose-300">
+                          {emailError}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={!supabaseConfigured || isBusy}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {busyAction === 'magic' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {busyAction === 'magic'
+                        ? t('settings.account.sendingMagic')
+                        : t('settings.account.sendMagic')}
+                    </button>
+                  </form>
+
+                  {magicLinkSentTo && (
+                    <div
+                      role="status"
+                      className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-2.5 text-xs text-emerald-200"
+                    >
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400"
+                        aria-hidden="true"
+                      />
+                      <p>
+                        <strong>{t('settings.account.magicSentTitle')}</strong>{' '}
+                        {t('settings.account.magicSentBody')}{' '}
+                        <span className="font-semibold">{magicLinkSentTo}</span>.
+                      </p>
+                    </div>
+                  )}
+
+                  {authError && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                    >
+                      {authError}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* 4. Connected Accounts Card (Collapsible) */}
+        <section
+          aria-labelledby="settings-connected-heading"
+          data-testid="connected-accounts-section"
+          className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
+        >
+          <CollapsibleCardHeader
+            headingId="settings-connected-heading"
+            panelId="settings-connected-panel"
+            icon={<Link2 className="h-4 w-4" aria-hidden="true" />}
+            iconBgClass="bg-sky-500/15 text-sky-400"
+            title={t('settings.connected.title')}
+            subtitle={t('settings.connected.subtitle')}
+            expanded={expandedSections.connected}
+            toggleAriaLabel={t('settings.toggleSectionAria', {
+              section: t('settings.connected.title'),
+            })}
+            onToggle={() => toggleSection('connected')}
+          />
+
+          {expandedSections.connected && (
+            <div id="settings-connected-panel" data-testid="connected-accounts-section-body">
+              {signedInEmail ? (
+                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold text-white">
+                        {t('settings.connected.googleTitle')}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {isGooglePaired
+                          ? t('settings.connected.googlePairedDesc')
+                          : t('settings.connected.googleUnpairedDesc')}
+                      </p>
+                    </div>
+
+                    {identitiesLoading ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        {t('common.checking')}
+                      </span>
+                    ) : isGooglePaired ? (
+                      <span
+                        data-testid="google-connected-badge"
+                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30"
+                      >
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                        {t('settings.connected.googleConnectedBadge')}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!supabaseConfigured || isBusy || identitiesLoading}
+                        onClick={() => void handleLinkGoogleClick()}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {busyAction === 'link' ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        {busyAction === 'link'
+                          ? t('settings.connected.connectingGoogle')
+                          : t('settings.connected.pairGoogleBtn')}
+                      </button>
+                    )}
+                  </div>
+
+                  {linkingError && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                    >
+                      {linkingError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-white/10 bg-slate-900/50 p-3.5 text-xs text-slate-400">
+                  {t('settings.connected.signedOutNote')}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* 5. Privacy & Preferences Card (Collapsible) */}
         <section
           aria-labelledby="settings-privacy-heading"
           data-testid="privacy-preferences-section"
           className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-              <Shield className="h-4 w-4" aria-hidden="true" />
-            </div>
-            <div>
-              <h2 id="settings-privacy-heading" className="text-sm font-bold text-white">
-                Privacy &amp; Preferences
-              </h2>
-              <p className="text-xs text-slate-400">
-                Public-safe masking and local encrypted storage overview.
-              </p>
-            </div>
-          </div>
+          <CollapsibleCardHeader
+            headingId="settings-privacy-heading"
+            panelId="settings-privacy-panel"
+            icon={<Shield className="h-4 w-4" aria-hidden="true" />}
+            iconBgClass="bg-emerald-500/15 text-emerald-400"
+            title={t('settings.privacy.title')}
+            subtitle={t('settings.privacy.subtitle')}
+            expanded={expandedSections.privacy}
+            toggleAriaLabel={t('settings.toggleSectionAria', {
+              section: t('settings.privacy.title'),
+            })}
+            onToggle={() => toggleSection('privacy')}
+          />
 
-          <div className="divide-y divide-white/10 rounded-xl border border-white/10 bg-slate-900/60">
-            <div className="flex items-center justify-between gap-3 p-4">
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-white">Discreet Mode</p>
-                <p className="text-[11px] text-slate-400">
-                  Hides map stats and pin names, and masks sensitive details in public
-                  {hasPassphraseLock ? ' (Vault passphrase protected).' : '.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={discreetMode}
-                onClick={onToggleDiscreet}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                  discreetMode
-                    ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
-                    : 'bg-white/10 text-slate-200 hover:bg-white/15'
-                }`}
-              >
-                {discreetMode ? (
-                  <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-                ) : (
-                  <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-                {discreetMode ? 'On' : 'Off'}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 p-4">
-              <div className="flex items-start gap-2.5">
-                <Database
-                  className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
-                  aria-hidden="true"
-                />
+          {expandedSections.privacy && (
+            <div
+              id="settings-privacy-panel"
+              data-testid="privacy-preferences-section-body"
+              className="divide-y divide-white/10 rounded-xl border border-white/10 bg-slate-900/60"
+            >
+              <div className="flex items-center justify-between gap-3 p-4">
                 <div className="space-y-0.5">
-                  <p className="text-xs font-semibold text-white">Local Cache Status</p>
-                  <p data-testid="local-cache-status" className="text-[11px] text-slate-400">
-                    {localPinCount === 0
-                      ? '0 entries cached locally in encrypted IndexedDB'
-                      : `${localPinCount} ${localPinCount === 1 ? 'entry' : 'entries'} cached locally in AES-256-GCM IndexedDB`}
+                  <p className="text-xs font-semibold text-white">
+                    {t('settings.privacy.discreetTitle')}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {t('settings.privacy.discreetDesc')}
+                    {hasPassphraseLock ? t('settings.privacy.passphraseProtectedSuffix') : '.'}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={discreetMode}
+                  onClick={onToggleDiscreet}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                    discreetMode
+                      ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
+                      : 'bg-white/10 text-slate-200 hover:bg-white/15'
+                  }`}
+                >
+                  {discreetMode ? (
+                    <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {discreetMode ? t('common.on') : t('common.off')}
+                </button>
               </div>
-              <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
-                {signedInEmail ? 'Synced' : 'Local Only'}
-              </span>
+
+              <div className="flex items-center justify-between gap-3 p-4">
+                <div className="flex items-start gap-2.5">
+                  <Database
+                    className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
+                    aria-hidden="true"
+                  />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-semibold text-white">
+                      {t('settings.privacy.localCacheTitle')}
+                    </p>
+                    <p data-testid="local-cache-status" className="text-[11px] text-slate-400">
+                      {localCacheText}
+                    </p>
+                  </div>
+                </div>
+                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
+                  {signedInEmail
+                    ? t('settings.privacy.syncedBadge')
+                    : t('settings.privacy.localOnlyBadge')}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
-        {/* 5. Vault, Encryption & Cloud Sync Card */}
+        {/* 6. Vault, Encryption & Cloud Sync Card (Collapsible) */}
         {vaultSection && (
           <section
             aria-labelledby="settings-vault-heading"
             data-testid="settings-vault-section"
             className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
           >
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                <Lock className="h-4 w-4" aria-hidden="true" />
+            <CollapsibleCardHeader
+              headingId="settings-vault-heading"
+              panelId="settings-vault-panel"
+              icon={<Lock className="h-4 w-4" aria-hidden="true" />}
+              iconBgClass="bg-emerald-500/15 text-emerald-400"
+              title={t('settings.vault.title')}
+              subtitle={t('settings.vault.subtitle')}
+              expanded={expandedSections.vault}
+              toggleAriaLabel={t('settings.toggleSectionAria', {
+                section: t('settings.vault.title'),
+              })}
+              onToggle={() => toggleSection('vault')}
+            />
+
+            {expandedSections.vault && (
+              <div id="settings-vault-panel" data-testid="settings-vault-section-body">
+                {vaultSection}
               </div>
-              <div>
-                <h2 id="settings-vault-heading" className="text-sm font-bold text-white">
-                  Vault, Encryption &amp; Sync
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Local passphrase lock, encrypted JSON backup/restore, and cloud pin sync.
-                </p>
-              </div>
-            </div>
-            {vaultSection}
+            )}
           </section>
         )}
       </main>

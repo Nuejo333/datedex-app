@@ -7,6 +7,7 @@
 import { useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
 import { getAdProviderConfig } from '../../platform/ads/adProvider';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
 import { recordMonetizationEvent } from '../../platform/supabase/monetization';
 
 /**
@@ -28,6 +29,7 @@ export function AdBannerSlot({
   slot = 'pokedex_banner',
   onUpgradeClick,
 }: AdBannerSlotProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const provider = getAdProviderConfig();
   const visible = !isPro;
 
@@ -40,17 +42,15 @@ export function AdBannerSlot({
 
   return (
     <aside
-      aria-label="Sponsored Banner"
+      aria-label={t('ad.bannerAria')}
       data-testid="ad-banner-slot"
       className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#121622]/90 px-4 py-3 text-xs"
     >
       <div className="min-w-0">
         <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-          Sponsored • {provider.isConfigured ? provider.networkName : 'Free Tier'}
+          {t('ad.sponsored')} • {provider.isConfigured ? provider.networkName : t('ad.freeTier')}
         </span>
-        <p className="truncate font-medium text-slate-200">
-          Remove all ads & unlock AI Rizz Coach with Datédex Pro (€2.99/mo).
-        </p>
+        <p className="truncate font-medium text-slate-200">{t('ad.bannerCopy')}</p>
       </div>
       <button
         type="button"
@@ -61,7 +61,7 @@ export function AdBannerSlot({
         className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-amber-400/20 px-3 py-1.5 font-semibold text-amber-300 hover:bg-amber-400/30"
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        Go Pro
+        {t('ad.goPro')}
       </button>
     </aside>
   );

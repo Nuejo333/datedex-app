@@ -6,6 +6,7 @@
 import { FileSpreadsheet, Settings, Shield, ShieldOff } from 'lucide-react';
 import type { HudStats } from '../../domain/analytics/pokedexStats';
 import { formatHudDates2Bed } from '../../domain/vault/masking';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
 
 /**
  * Props for `HudStatsBar`.
@@ -38,6 +39,8 @@ export function HudStatsBar({
   onToggleDiscreet,
   onOpenSettings,
 }: HudStatsBarProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <header className="px-4 pt-3 pb-3">
       <div className="mx-auto max-w-2xl space-y-2.5">
@@ -57,12 +60,12 @@ export function HudStatsBar({
             <button
               type="button"
               onClick={onOpenImport}
-              aria-label="Import"
-              title="Import Excel or CSV"
+              aria-label={t('header.import')}
+              title={t('header.importTitle')}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
             >
               <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
-              Import
+              {t('header.import')}
             </button>
 
             <button
@@ -79,17 +82,19 @@ export function HudStatsBar({
               ) : (
                 <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {discreetMode ? 'Active' : 'Discreet'}
+              {discreetMode ? t('header.active') : t('header.discreet')}
             </button>
 
             <button
               type="button"
               onClick={onOpenSettings}
-              aria-label={isSignedIn ? 'Account & Settings (Signed in)' : 'Account & Settings'}
+              aria-label={isSignedIn ? t('header.settingsSignedInAria') : t('header.settingsAria')}
               title={
                 isSignedIn
-                  ? `Account & Settings (${signedInEmail ?? 'Signed in'})`
-                  : 'Account & Settings'
+                  ? t('header.settingsSignedInTitle', {
+                      email: signedInEmail ?? t('header.signedInFallback'),
+                    })
+                  : t('header.settingsAria')
               }
               className={`relative rounded-full p-1.5 transition ${isSignedIn
                   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30'
@@ -115,7 +120,7 @@ export function HudStatsBar({
                 {stats.totalDates}
               </div>
               <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-                Dates
+                {t('hud.dates')}
               </div>
             </div>
 
@@ -124,7 +129,7 @@ export function HudStatsBar({
                 {stats.countriesCount}
               </div>
               <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-                Countries
+                {t('hud.countries')}
               </div>
             </div>
 
@@ -133,7 +138,7 @@ export function HudStatsBar({
                 {stats.avgRating.toFixed(1)}
               </div>
               <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-                Avg ★
+                {t('hud.avgRating')}
               </div>
             </div>
 
@@ -142,7 +147,7 @@ export function HudStatsBar({
                 {formatHudDates2Bed(stats.dates2BedPercent, discreetMode)}
               </div>
               <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
-                Dates2Bed
+                {t('hud.dates2Bed')}
               </div>
             </div>
           </div>

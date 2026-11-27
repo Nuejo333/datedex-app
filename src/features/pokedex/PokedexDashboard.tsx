@@ -18,13 +18,46 @@ import { COUNTRY_BY_CODE, getCountryFlag } from '../../domain/countries/countrie
 import {
   MetChannelSchema,
   RelationshipStatusSchema,
-  formatRelationshipStatus,
   formatTenScale,
   type DecryptedPin,
   type MetChannel,
   type RelationshipStatus,
 } from '../../domain/models/pin';
 import { maskPinForDiscreet } from '../../domain/vault/masking';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
+import type { TranslationKey } from '../../platform/i18n/translations';
+
+const STATUS_TRANSLATION_KEY: Record<RelationshipStatus, TranslationKey> = {
+  talking: 'status.talking',
+  first_date: 'status.first_date',
+  dating: 'status.dating',
+  situationship: 'status.situationship',
+  exclusive: 'status.exclusive',
+  archived: 'status.archived',
+};
+
+const BADGE_TRANSLATION_KEYS: Record<string, { title: TranslationKey; desc: TranslationKey }> = {
+  'first-stamp': {
+    title: 'pokedex.badge.first-stamp.title',
+    desc: 'pokedex.badge.first-stamp.desc',
+  },
+  polyglot: {
+    title: 'pokedex.badge.polyglot.title',
+    desc: 'pokedex.badge.polyglot.desc',
+  },
+  jetsetter: {
+    title: 'pokedex.badge.jetsetter.title',
+    desc: 'pokedex.badge.jetsetter.desc',
+  },
+  chemistry: {
+    title: 'pokedex.badge.chemistry.title',
+    desc: 'pokedex.badge.chemistry.desc',
+  },
+  'irl-charm': {
+    title: 'pokedex.badge.irl-charm.title',
+    desc: 'pokedex.badge.irl-charm.desc',
+  },
+};
 
 /**
  * Props for `PokedexDashboard`.
@@ -45,6 +78,7 @@ export function PokedexDashboard({
   discreetMode,
   onSelectPin,
 }: PokedexDashboardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<PokedexFilter>({
     searchQuery: '',
     nationalityCode: 'ALL',
@@ -73,7 +107,7 @@ export function PokedexDashboard({
           <div className="mb-2 flex items-center justify-between">
             <h2 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
               <Globe className="h-4 w-4 text-rose-400" aria-hidden="true" />
-              World Coverage
+              {t('pokedex.worldCoverage')}
             </h2>
             <span className="text-sm font-bold text-rose-300">
               {coverage.unlockedCount}/{coverage.totalCountries} ({coverage.percentage}%)
@@ -82,24 +116,24 @@ export function PokedexDashboard({
           <progress
             max={coverage.totalCountries}
             value={coverage.unlockedCount}
-            aria-label="World country coverage"
+            aria-label={t('pokedex.worldCoverageAria')}
             className="h-2.5 w-full overflow-hidden rounded-full"
           />
           <p className="mt-2 text-[11px] text-slate-400">
             {coverage.unlockedCount === 0
-              ? 'Log your first international match to stamp your passport.'
-              : `Stamped ${coverage.unlockedCount} sovereign ${
-                  coverage.unlockedCount === 1 ? 'country' : 'countries'
-                }.`}
+              ? t('pokedex.coverageEmpty')
+              : coverage.unlockedCount === 1
+                ? t('pokedex.coverageStampedSingle', { count: coverage.unlockedCount })
+                : t('pokedex.coverageStampedPlural', { count: coverage.unlockedCount })}
           </p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
           <h2 className="mb-2.5 text-xs font-semibold text-slate-200 uppercase">
-            Top Nationalities
+            {t('pokedex.topNationalities')}
           </h2>
           {topNationalities.length === 0 ? (
-            <p className="text-xs text-slate-400">No entries logged yet.</p>
+            <p className="text-xs text-slate-400">{t('pokedex.noEntriesYet')}</p>
           ) : (
             <ul className="space-y-1.5">
               {topNationalities.map((nat) => (
@@ -122,7 +156,7 @@ export function PokedexDashboard({
         <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
           <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
             <Star className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-            Rating Distribution
+            {t('pokedex.ratingDistribution')}
           </h2>
           <div className="space-y-1.5">
             {ratingBuckets.map((bucket) => (
@@ -143,23 +177,28 @@ export function PokedexDashboard({
         <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
           <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
             <Award className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-            Achievement Badges
+            {t('pokedex.achievementBadges')}
           </h2>
           <div className="flex flex-wrap gap-1.5">
-            {badges.map((badge) => (
-              <span
-                key={badge.id}
-                title={badge.description}
-                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
-                  badge.unlocked
-                    ? 'border-amber-400/40 bg-amber-400/15 text-amber-200'
-                    : 'border-white/10 bg-slate-900/60 text-slate-400'
-                }`}
-              >
-                {badge.unlocked ? '★ ' : ''}
-                {badge.title} ({badge.progressText})
-              </span>
-            ))}
+            {badges.map((badge) => {
+              const badgeKeys = BADGE_TRANSLATION_KEYS[badge.id];
+              const badgeTitle = badgeKeys ? t(badgeKeys.title) : badge.title;
+              const badgeDesc = badgeKeys ? t(badgeKeys.desc) : badge.description;
+              return (
+                <span
+                  key={badge.id}
+                  title={badgeDesc}
+                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
+                    badge.unlocked
+                      ? 'border-amber-400/40 bg-amber-400/15 text-amber-200'
+                      : 'border-white/10 bg-slate-900/60 text-slate-400'
+                  }`}
+                >
+                  {badge.unlocked ? '★ ' : ''}
+                  {badgeTitle} ({badge.progressText})
+                </span>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -173,22 +212,22 @@ export function PokedexDashboard({
           />
           <input
             type="search"
-            aria-label="Search Pokédex entries"
+            aria-label={t('pokedex.searchAria')}
             value={filter.searchQuery}
             onChange={(e) => setFilter((prev) => ({ ...prev, searchQuery: e.target.value }))}
-            placeholder="Search name, city, country, channel, or notes..."
+            placeholder={t('pokedex.searchPlaceholder')}
             className="dd-input pl-9 text-sm"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <select
-            aria-label="Filter by country"
+            aria-label={t('pokedex.filterCountryAria')}
             value={filter.nationalityCode}
             onChange={(e) => setFilter((prev) => ({ ...prev, nationalityCode: e.target.value }))}
             className="dd-input text-xs"
           >
-            <option value="ALL">All Countries</option>
+            <option value="ALL">{t('pokedex.allCountries')}</option>
             {representedCountries.map((code) => (
               <option key={code} value={code}>
                 {getCountryFlag(code)} {COUNTRY_BY_CODE.get(code)?.name ?? code}
@@ -197,7 +236,7 @@ export function PokedexDashboard({
           </select>
 
           <select
-            aria-label="Filter by status"
+            aria-label={t('pokedex.filterStatusAria')}
             value={filter.status}
             onChange={(e) =>
               setFilter((prev) => ({
@@ -207,23 +246,23 @@ export function PokedexDashboard({
             }
             className="dd-input text-xs"
           >
-            <option value="all">All Stages</option>
+            <option value="all">{t('pokedex.allStatuses')}</option>
             {RelationshipStatusSchema.options.map((opt) => (
               <option key={opt} value={opt}>
-                {formatRelationshipStatus(opt)}
+                {t(STATUS_TRANSLATION_KEY[opt])}
               </option>
             ))}
           </select>
 
           <select
-            aria-label="Filter by channel"
+            aria-label={t('pokedex.filterChannelAria')}
             value={filter.channel}
             onChange={(e) =>
               setFilter((prev) => ({ ...prev, channel: e.target.value as MetChannel | 'all' }))
             }
             className="dd-input text-xs"
           >
-            <option value="all">All Channels</option>
+            <option value="all">{t('pokedex.allChannels')}</option>
             {MetChannelSchema.options.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
@@ -232,7 +271,7 @@ export function PokedexDashboard({
           </select>
 
           <select
-            aria-label="Sort Pokédex"
+            aria-label={t('pokedex.sortAria')}
             value={filter.sortBy}
             onChange={(e) =>
               setFilter((prev) => ({
@@ -242,9 +281,9 @@ export function PokedexDashboard({
             }
             className="dd-input text-xs"
           >
-            <option value="recent">Sort: Recent</option>
-            <option value="rating">Sort: Highest ★</option>
-            <option value="name">Sort: Name A–Z</option>
+            <option value="recent">{t('pokedex.sortRecent')}</option>
+            <option value="rating">{t('pokedex.sortRating')}</option>
+            <option value="name">{t('pokedex.sortName')}</option>
           </select>
         </div>
       </section>
@@ -252,10 +291,8 @@ export function PokedexDashboard({
       {/* Cards Grid */}
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-[#121622]/60 p-8 text-center">
-          <p className="text-sm font-medium text-slate-300">No matching Datédex entries yet.</p>
-          <p className="mt-1 text-xs text-slate-400">
-            Tap the + button below or import an Excel/CSV sheet to log connections.
-          </p>
+          <p className="text-sm font-medium text-slate-300">{t('pokedex.emptyTitle')}</p>
+          <p className="mt-1 text-xs text-slate-400">{t('pokedex.emptySubtitle')}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2" data-testid="pokedex-cards">
@@ -293,10 +330,13 @@ export function PokedexDashboard({
                   </div>
 
                   <p className="truncate text-xs text-slate-300">
-                    {display.displayCity} • {pin.metChannel} • {formatRelationshipStatus(pin.relationshipStatus)}
+                    {display.displayCity} • {pin.metChannel} •{' '}
+                    {t(STATUS_TRANSLATION_KEY[pin.relationshipStatus])}
                   </p>
 
-                  <p className="line-clamp-2 text-[11px] text-slate-400">{display.displayNotes || 'No private notes'}</p>
+                  <p className="line-clamp-2 text-[11px] text-slate-400">
+                    {display.displayNotes || t('pokedex.noPrivateNotes')}
+                  </p>
                 </div>
               </button>
             );

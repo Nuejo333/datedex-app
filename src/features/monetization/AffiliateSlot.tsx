@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
 import type { AffiliateOffer, AffiliatePlacement } from '../../domain/models/monetization';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
 import { recordMonetizationEvent } from '../../platform/supabase/monetization';
 
 /**
@@ -27,6 +28,7 @@ export function AffiliateSlot({
   placement,
   discreetMode,
 }: AffiliateSlotProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const offer = offers.find((o) => o.placement === placement);
   const visible = Boolean(offer) && !discreetMode;
 
@@ -39,14 +41,14 @@ export function AffiliateSlot({
 
   return (
     <aside
-      aria-label="Partner Recommendation"
+      aria-label={t('ad.partnerAria')}
       data-testid="affiliate-slot"
       className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/20 bg-gradient-to-r from-[#161927] to-[#1a1423] px-4 py-3 text-xs"
     >
       <div className="min-w-0 space-y-0.5">
         <div className="flex items-center gap-2">
           <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300 uppercase">
-            {offer.badge ?? 'Partner'}
+            {offer.badge ?? t('ad.partnerBadge')}
           </span>
           <span className="truncate font-semibold text-white">{offer.title}</span>
         </div>

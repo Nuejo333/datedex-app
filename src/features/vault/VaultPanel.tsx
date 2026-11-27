@@ -17,6 +17,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { EncryptedBackupBundleSchema, type VaultSettings } from '../../domain/models/profile';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
 
 /**
  * Props for `VaultPanel`.
@@ -59,6 +60,7 @@ export function VaultPanel({
   onSyncNow,
   onSignOut,
 }: VaultPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [newPassphrase, setNewPassphrase] = useState('');
   const [backupPassphrase, setBackupPassphrase] = useState('');
   const [restorePassphrase, setRestorePassphrase] = useState('');
@@ -82,9 +84,9 @@ export function VaultPanel({
       anchor.click();
       URL.revokeObjectURL(url);
       setBackupPassphrase('');
-      setFeedback('Encrypted JSON backup exported safely.');
+      setFeedback(t('vault.exportSuccess'));
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Backup export failed');
+      setErrorMsg(err instanceof Error ? err.message : t('vault.exportError'));
     } finally {
       setBusy(false);
     }
@@ -98,13 +100,13 @@ export function VaultPanel({
       const text = await file.text();
       const parsed = EncryptedBackupBundleSchema.safeParse(JSON.parse(text));
       if (!parsed.success) {
-        throw new Error('Selected file is not a valid Datédex encrypted backup');
+        throw new Error(t('vault.invalidBackupFile'));
       }
       setPendingRestoreJson(text);
-      setFeedback(`Loaded ${file.name}. Enter its backup passphrase to decrypt and restore.`);
+      setFeedback(t('vault.loadedBackup', { name: file.name }));
     } catch (err) {
       setPendingRestoreJson(null);
-      setErrorMsg(err instanceof Error ? err.message : 'Invalid backup file');
+      setErrorMsg(err instanceof Error ? err.message : t('vault.invalidBackupFile'));
     }
   };
 
@@ -117,9 +119,9 @@ export function VaultPanel({
       const count = await onRestoreBackup(pendingRestoreJson, restorePassphrase);
       setPendingRestoreJson(null);
       setRestorePassphrase('');
-      setFeedback(`Restored ${count} entries from encrypted backup.`);
+      setFeedback(t('vault.restoredCount', { count }));
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Wrong passphrase or corrupted backup');
+      setErrorMsg(err instanceof Error ? err.message : t('vault.restoreError'));
     } finally {
       setBusy(false);
     }
@@ -131,7 +133,7 @@ export function VaultPanel({
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-white">Vault & Discreet Controls</h2>
+          <h2 className="text-sm font-bold text-white">{t('vault.controlsTitle')}</h2>
         </div>
 
         <div className="grid gap-2">
@@ -145,14 +147,16 @@ export function VaultPanel({
                 : 'border-white/10 bg-slate-900/60 text-slate-200'
             }`}
           >
-            <span>Vault / Discreet</span>
-            <span>{vaultSettings.discreetMode ? 'ON' : 'OFF'}</span>
+            <span>{t('vault.toggleLabel')}</span>
+            <span>{vaultSettings.discreetMode ? t('common.onUpper') : t('common.offUpper')}</span>
           </button>
         </div>
 
         <div className="space-y-1.5 border-t border-white/10 pt-3">
           <label htmlFor="vault-pass-update" className="block text-xs font-medium text-slate-300">
-            {vaultSettings.hasPassphraseLock ? 'Update Vault Lock Passphrase' : 'Set Local Vault Lock Passphrase'}
+            {vaultSettings.hasPassphraseLock
+              ? t('vault.updatePassphraseLabel')
+              : t('vault.setPassphraseLabel')}
           </label>
           <div className="flex gap-2">
             <input
@@ -161,7 +165,7 @@ export function VaultPanel({
               minLength={4}
               value={newPassphrase}
               onChange={(e) => setNewPassphrase(e.target.value)}
-              placeholder="Min 4 characters (leave blank to clear)"
+              placeholder={t('vault.passphrasePlaceholder')}
               className="dd-input flex-1 text-xs"
             />
             <button
@@ -172,17 +176,19 @@ export function VaultPanel({
                 setFeedback(null);
                 void onSetPassphrase(newPassphrase)
                   .then(() => {
-                    setFeedback(newPassphrase.trim() ? 'Vault passphrase saved.' : 'Vault lock removed.');
+                    setFeedback(
+                      newPassphrase.trim() ? t('vault.passphraseSaved') : t('vault.lockRemoved'),
+                    );
                     setNewPassphrase('');
                   })
                   .catch((e: unknown) =>
-                    setErrorMsg(e instanceof Error ? e.message : 'Failed to update passphrase'),
+                    setErrorMsg(e instanceof Error ? e.message : t('vault.passphraseError')),
                   );
               }}
               className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
             >
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-              Save
+              {t('common.save')}
             </button>
           </div>
         </div>
@@ -193,21 +199,20 @@ export function VaultPanel({
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
           <p>
-            <strong>Offline Privacy Notice:</strong> When you are not signed in, 100% of your data
-            stays on this device in IndexedDB. Clearing browser site data or uninstalling will erase
-            local entries unless you export an <strong>Encrypted JSON Backup</strong> below.
+            <strong>{t('vault.offlineNoticeTitle')}</strong> {t('vault.offlineNoticeBefore')}{' '}
+            <strong>{t('vault.offlineNoticeBold')}</strong> {t('vault.offlineNoticeAfter')}
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2 rounded-xl border border-white/10 bg-slate-900/50 p-3">
-            <h3 className="text-xs font-semibold text-white">Export Encrypted Backup</h3>
+            <h3 className="text-xs font-semibold text-white">{t('vault.exportTitle')}</h3>
             <input
               type="password"
               value={backupPassphrase}
               onChange={(e) => setBackupPassphrase(e.target.value)}
-              placeholder="Backup passphrase (min 6 chars)"
-              aria-label="Backup export passphrase"
+              placeholder={t('vault.exportPlaceholder')}
+              aria-label={t('vault.exportAria')}
               className="dd-input text-xs"
             />
             <button
@@ -217,15 +222,15 @@ export function VaultPanel({
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
-              Download .json Backup
+              {t('vault.exportBtn')}
             </button>
           </div>
 
           <div className="space-y-2 rounded-xl border border-white/10 bg-slate-900/50 p-3">
-            <h3 className="text-xs font-semibold text-white">Restore Encrypted Backup</h3>
+            <h3 className="text-xs font-semibold text-white">{t('vault.restoreTitle')}</h3>
             <label className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10">
               <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-              Select Backup .json
+              {t('vault.selectBackup')}
               <input
                 type="file"
                 accept=".json,application/json"
@@ -239,8 +244,8 @@ export function VaultPanel({
                   type="password"
                   value={restorePassphrase}
                   onChange={(e) => setRestorePassphrase(e.target.value)}
-                  placeholder="Enter backup passphrase"
-                  aria-label="Backup restore passphrase"
+                  placeholder={t('vault.restorePlaceholder')}
+                  aria-label={t('vault.restoreAria')}
                   className="dd-input text-xs"
                 />
                 <button
@@ -249,7 +254,7 @@ export function VaultPanel({
                   onClick={() => void handleRestoreSubmit()}
                   className="w-full rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
                 >
-                  Decrypt & Restore
+                  {t('vault.decryptRestoreBtn')}
                 </button>
               </div>
             )}
@@ -262,7 +267,7 @@ export function VaultPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Cloud className="h-4 w-4 text-sky-400" aria-hidden="true" />
-            <h2 className="text-sm font-bold text-white">Optional Encrypted Cloud Sync</h2>
+            <h2 className="text-sm font-bold text-white">{t('vault.cloudSyncTitle')}</h2>
           </div>
           {signedInEmail && (
             <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300">
@@ -272,10 +277,7 @@ export function VaultPanel({
         </div>
 
         {!supabaseConfigured ? (
-          <p className="text-xs text-slate-400">
-            Running in local-only mode. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
-            to enable Google OAuth / Email Magic Link cloud sync.
-          </p>
+          <p className="text-xs text-slate-400">{t('vault.localOnlyNotice')}</p>
         ) : signedInEmail ? (
           <div className="space-y-3">
             <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-200">
@@ -285,9 +287,7 @@ export function VaultPanel({
                 onChange={(e) => void onToggleSyncPhotos(e.target.checked)}
                 className="dd-checkbox h-4 w-4"
               />
-              <span>
-                Opt-in: Sync EXIF-stripped photos to private Supabase Storage bucket (signed URLs only)
-              </span>
+              <span>{t('vault.syncPhotosOptIn')}</span>
             </label>
 
             <div className="flex flex-wrap gap-2">
@@ -300,14 +300,14 @@ export function VaultPanel({
                   void onSyncNow()
                     .then((msg) => setFeedback(msg))
                     .catch((e: unknown) =>
-                      setErrorMsg(e instanceof Error ? e.message : 'Sync failed'),
+                      setErrorMsg(e instanceof Error ? e.message : t('vault.syncError')),
                     )
                     .finally(() => setBusy(false));
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500 px-3.5 py-2 text-xs font-semibold text-slate-950 hover:bg-sky-400"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                Sync Encrypted Pins
+                {t('vault.syncPinsBtn')}
               </button>
 
               {!embeddedInSettings && (
@@ -317,30 +317,26 @@ export function VaultPanel({
                   className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
                 >
                   <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                  Sign Out
+                  {t('settings.account.signOut')}
                 </button>
               )}
             </div>
           </div>
         ) : embeddedInSettings ? (
-          <p className="text-xs text-slate-400">
-            Sign in under Account &amp; Authentication above to enable encrypted cloud sync.
-          </p>
+          <p className="text-xs text-slate-400">{t('vault.signInAboveSync')}</p>
         ) : (
           <div className="space-y-2.5">
-            <p className="text-xs text-slate-400">
-              Passwordless authentication only (Google OAuth or Email Magic Link OTP).
-            </p>
+            <p className="text-xs text-slate-400">{t('vault.passwordlessNote')}</p>
             <button
               type="button"
               onClick={() =>
                 void onGoogleSignIn().catch((e: unknown) =>
-                  setErrorMsg(e instanceof Error ? e.message : 'Google OAuth failed'),
+                  setErrorMsg(e instanceof Error ? e.message : t('settings.account.googleError')),
                 )
               }
               className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
             >
-              Sign in with Google OAuth
+              {t('vault.signInGoogleOAuth')}
             </button>
             <div className="flex gap-2">
               <input
@@ -348,7 +344,7 @@ export function VaultPanel({
                 value={magicEmail}
                 onChange={(e) => setMagicEmail(e.target.value)}
                 placeholder="you@example.com"
-                aria-label="Magic link email"
+                aria-label={t('vault.magicEmailAria')}
                 className="dd-input flex-1 text-xs"
               />
               <button
@@ -356,15 +352,15 @@ export function VaultPanel({
                 disabled={!magicEmail.includes('@')}
                 onClick={() =>
                   void onSendMagicLink(magicEmail)
-                    .then(() => setFeedback('Magic Link sent to your email inbox.'))
+                    .then(() => setFeedback(t('vault.magicLinkSent')))
                     .catch((e: unknown) =>
-                      setErrorMsg(e instanceof Error ? e.message : 'Magic link failed'),
+                      setErrorMsg(e instanceof Error ? e.message : t('vault.magicLinkFailed')),
                     )
                 }
                 className="inline-flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
               >
                 <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                Magic Link
+                {t('vault.magicLinkBtn')}
               </button>
             </div>
           </div>

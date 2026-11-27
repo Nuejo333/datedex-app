@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { COUNTRIES } from '../../domain/countries/countries';
 import { OnboardingInputSchema, type OnboardingInput } from '../../domain/models/profile';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
 
 /**
  * Props for `OnboardingFlow`.
@@ -40,6 +41,7 @@ export function OnboardingFlow({
   onSendMagicLink,
   onOpenSignIn,
 }: OnboardingFlowProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [displayName, setDisplayName] = useState('');
   const [homeCountry, setHomeCountry] = useState('US');
@@ -61,7 +63,7 @@ export function OnboardingFlow({
     });
 
     if (!parsed.success) {
-      setErrorMsg(parsed.error.issues[0]?.message ?? 'Complete all required onboarding fields');
+      setErrorMsg(parsed.error.issues[0]?.message ?? t('onboarding.completeFieldsError'));
       return;
     }
 
@@ -69,7 +71,7 @@ export function OnboardingFlow({
     try {
       await onComplete(parsed.data);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unable to save onboarding profile');
+      setErrorMsg(err instanceof Error ? err.message : t('onboarding.saveError'));
     } finally {
       setBusy(false);
     }
@@ -81,9 +83,9 @@ export function OnboardingFlow({
     setBusy(true);
     try {
       await onSendMagicLink(magicEmail);
-      setStatusMsg('Magic Link sent! Check your inbox, or continue offline now.');
+      setStatusMsg(t('onboarding.magicSent'));
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to send Magic Link');
+      setErrorMsg(err instanceof Error ? err.message : t('settings.account.magicError'));
     } finally {
       setBusy(false);
     }
@@ -96,9 +98,9 @@ export function OnboardingFlow({
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-300">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Step {step} of 4
+              {t('onboarding.stepBadge', { step })}
             </span>
-            <div className="flex gap-1.5" aria-label="Onboarding progress">
+            <div className="flex gap-1.5" aria-label={t('onboarding.progressAria')}>
               {[1, 2, 3, 4].map((idx) => (
                 <span
                   key={idx}
@@ -113,11 +115,9 @@ export function OnboardingFlow({
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <h1 className="text-2xl font-bold tracking-tight text-white">
-                Welcome to Datédex
+                {t('onboarding.welcome')}
               </h1>
-              <p className="text-sm text-slate-300">
-                Your private, encrypted romantic passport — Track Your Dating Journey.
-              </p>
+              <p className="text-sm text-slate-300">{t('onboarding.tagline')}</p>
             </div>
             {supabaseConfigured && onOpenSignIn && (
               <button
@@ -125,7 +125,7 @@ export function OnboardingFlow({
                 onClick={onOpenSignIn}
                 className="shrink-0 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
               >
-                Sign In
+                {t('onboarding.signInBtn')}
               </button>
             )}
           </div>
@@ -138,17 +138,17 @@ export function OnboardingFlow({
                 <Compass className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Identity Setup</h2>
-                <p className="text-xs text-slate-400">Stored on your device first.</p>
+                <h2 className="text-base font-semibold text-white">{t('onboarding.step1Title')}</h2>
+                <p className="text-xs text-slate-400">{t('onboarding.step1Subtitle')}</p>
               </div>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="onboard-name" className="block text-xs font-medium text-slate-200">
-                Passport Nickname
+                {t('onboarding.nicknameLabel')}
               </label>
               <span id="onboard-name-hint" className="block text-xs text-slate-400">
-                Shown in your local Pokédex header (e.g. Alex).
+                {t('onboarding.nicknameHint')}
               </span>
               <input
                 id="onboard-name"
@@ -162,12 +162,12 @@ export function OnboardingFlow({
                 aria-describedby="onboard-name-hint"
                 className="dd-input"
               />
-              <span className="dd-error-msg">Enter a nickname to personalize your passport.</span>
+              <span className="dd-error-msg">{t('onboarding.nicknameError')}</span>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="onboard-country" className="block text-xs font-medium text-slate-200">
-                Home Base Country
+                {t('onboarding.homeCountryLabel')}
               </label>
               <select
                 id="onboard-country"
@@ -192,30 +192,23 @@ export function OnboardingFlow({
                 <ShieldCheck className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Zero-Knowledge Privacy Pledge</h2>
-                <p className="text-xs text-slate-400">Local-first IndexedDB + Web Crypto AES-GCM.</p>
+                <h2 className="text-base font-semibold text-white">{t('onboarding.step2Title')}</h2>
+                <p className="text-xs text-slate-400">{t('onboarding.step2Subtitle')}</p>
               </div>
             </div>
 
             <ul className="space-y-2.5 text-xs text-slate-300">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
-                <span>
-                  Sensitive notes, intimacy logs, and Vault entries are encrypted in your browser via
-                  AES-256-GCM before storage.
-                </span>
+                <span>{t('onboarding.pledgePoint1')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
-                <span>
-                  Uploaded photos are resized and stripped of EXIF GPS coordinates locally before saving.
-                </span>
+                <span>{t('onboarding.pledgePoint2')}</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
-                <span>
-                  Works 100% offline with zero account required. Export an encrypted JSON backup anytime.
-                </span>
+                <span>{t('onboarding.pledgePoint3')}</span>
               </li>
             </ul>
 
@@ -226,10 +219,7 @@ export function OnboardingFlow({
                 onChange={(e) => setPrivacyAccepted(e.target.checked)}
                 className="dd-checkbox mt-0.5 h-4 w-4 shrink-0"
               />
-              <span>
-                I understand that without cloud sync, browser storage clear/uninstall deletes local
-                data unless I export an Encrypted JSON Backup.
-              </span>
+              <span>{t('onboarding.pledgeAccept')}</span>
             </label>
           </section>
         )}
@@ -241,22 +231,22 @@ export function OnboardingFlow({
                 <Lock className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Vault & Discreet Protection</h2>
-                <p className="text-xs text-slate-400">Optional local passphrase lock.</p>
+                <h2 className="text-base font-semibold text-white">{t('onboarding.step3Title')}</h2>
+                <p className="text-xs text-slate-400">{t('onboarding.step3Subtitle')}</p>
               </div>
             </div>
 
             <p className="text-xs text-slate-300">
-              Toggle <strong>Vault / Discreet Mode</strong> anytime from the top bar to instantly mask
-              names, photos, intimacy metrics, and ad slots in public.
+              {t('onboarding.step3DescBefore')}{' '}
+              <strong>{t('onboarding.step3DescBold')}</strong> {t('onboarding.step3DescAfter')}
             </p>
 
             <div className="space-y-1.5">
               <label htmlFor="onboard-passphrase" className="block text-xs font-medium text-slate-200">
-                Optional Vault Passphrase (min 4 chars)
+                {t('onboarding.passphraseLabel')}
               </label>
               <span id="onboard-pass-hint" className="block text-xs text-slate-400">
-                Leave blank if you prefer one-tap discreet masking without a lock prompt.
+                {t('onboarding.passphraseHint')}
               </span>
               <input
                 id="onboard-passphrase"
@@ -265,7 +255,7 @@ export function OnboardingFlow({
                 maxLength={128}
                 value={vaultPassphrase}
                 onChange={(e) => setVaultPassphrase(e.target.value)}
-                placeholder="Optional local Vault PIN/passphrase"
+                placeholder={t('onboarding.passphrasePlaceholder')}
                 aria-describedby="onboard-pass-hint"
                 className="dd-input"
               />
@@ -280,8 +270,8 @@ export function OnboardingFlow({
                 <UserCheck className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Local-First or Encrypted Cloud Sync</h2>
-                <p className="text-xs text-slate-400">Passwordless auth only — zero passwords stored.</p>
+                <h2 className="text-base font-semibold text-white">{t('onboarding.step4Title')}</h2>
+                <p className="text-xs text-slate-400">{t('onboarding.step4Subtitle')}</p>
               </div>
             </div>
 
@@ -293,17 +283,17 @@ export function OnboardingFlow({
                   onClick={() => {
                     setErrorMsg(null);
                     void onGoogleSignIn().catch((e: unknown) =>
-                      setErrorMsg(e instanceof Error ? e.message : 'Google OAuth failed'),
+                      setErrorMsg(e instanceof Error ? e.message : t('settings.account.googleError')),
                     );
                   }}
                   className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/15"
                 >
-                  Continue with Google OAuth
+                  {t('onboarding.continueGoogle')}
                 </button>
 
                 <div className="space-y-2 rounded-xl border border-white/10 bg-slate-900/60 p-3">
                   <label htmlFor="onboard-magic-email" className="block text-xs font-medium text-slate-200">
-                    Or Email Magic Link (OTP)
+                    {t('onboarding.orMagicLink')}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -321,15 +311,14 @@ export function OnboardingFlow({
                       className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
                     >
                       <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-                      Send Link
+                      {t('onboarding.sendLink')}
                     </button>
                   </div>
                 </div>
               </div>
             ) : (
               <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
-                Cloud sync environment keys are optional. You can launch 100% offline right now and
-                export Encrypted JSON Backups anytime.
+                {t('onboarding.offlineKeysNotice')}
               </p>
             )}
 
@@ -358,7 +347,7 @@ export function OnboardingFlow({
             }}
             className="rounded-xl border border-white/15 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5"
           >
-            Back
+            {t('common.back')}
           </button>
         ) : (
           <div />
@@ -373,14 +362,14 @@ export function OnboardingFlow({
                 setDisplayName('Explorer');
               }
               if (step === 2 && !privacyAccepted) {
-                setErrorMsg('Please accept the privacy pledge to continue.');
+                setErrorMsg(t('onboarding.pledgeRequired'));
                 return;
               }
               setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4);
             }}
             className="flex-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:brightness-110"
           >
-            Continue
+            {t('onboarding.continue')}
           </button>
         ) : (
           <button
@@ -389,7 +378,7 @@ export function OnboardingFlow({
             onClick={() => void handleFinish()}
             className="flex-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-500/25 transition hover:brightness-110 disabled:opacity-60"
           >
-            {busy ? 'Encrypting Vault...' : 'Start Offline Passport'}
+            {busy ? t('onboarding.encryptingVault') : t('onboarding.startPassport')}
           </button>
         )}
       </footer>

@@ -13,8 +13,6 @@ import {
   MetChannelSchema,
   PinInputSchema,
   RelationshipStatusSchema,
-  formatIntimacyLevel,
-  formatRelationshipStatus,
   formatTenScale,
   type DecryptedPin,
   type IntimacyLevel,
@@ -22,8 +20,27 @@ import {
   type PinInput,
   type RelationshipStatus,
 } from '../../domain/models/pin';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
+import type { TranslationKey } from '../../platform/i18n/translations';
 import { stripExifAndCompressImage } from '../../platform/media/imageProcessor';
 import { useNativeModalDialog } from '../../platform/ui/dialogUtils';
+
+const STATUS_KEYS: Record<RelationshipStatus, TranslationKey> = {
+  talking: 'status.talking',
+  first_date: 'status.first_date',
+  dating: 'status.dating',
+  situationship: 'status.situationship',
+  exclusive: 'status.exclusive',
+  archived: 'status.archived',
+};
+
+const INTIMACY_KEYS: Record<IntimacyLevel, TranslationKey> = {
+  none: 'intimacy.none',
+  kiss: 'intimacy.kiss',
+  second_base: 'intimacy.second_base',
+  third_base: 'intimacy.third_base',
+  home_run: 'intimacy.home_run',
+};
 
 /**
  * Props for `PinEditorDialog`.
@@ -53,6 +70,7 @@ export function PinEditorDialog({
   onSave,
   onDelete,
 }: PinEditorDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
   useNativeModalDialog(dialogRef, open, onClose, true);
 
@@ -130,17 +148,21 @@ export function PinEditorDialog({
     const file = event.target.files?.[0];
     if (!file) return;
     setErrorMsg(null);
-    setPhotoNotice('Stripping EXIF GPS metadata & compressing...');
+    setPhotoNotice(t('pinEditor.photoProcessing'));
     try {
       const processed = await stripExifAndCompressImage(file);
       setPhotoDataUrl(processed.dataUrl);
       setProcessedBlob({ blob: processed.blob, mimeType: processed.mimeType });
       setPhotoNotice(
-        `EXIF stripped • ${processed.width}×${processed.height} (${Math.round(processed.blob.size / 1024)} KB)`,
+        t('pinEditor.photoProcessed', {
+          width: processed.width,
+          height: processed.height,
+          kb: Math.round(processed.blob.size / 1024),
+        }),
       );
     } catch (err) {
       setPhotoNotice(null);
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to process photo');
+      setErrorMsg(err instanceof Error ? err.message : t('pinEditor.photoError'));
     }
   };
 
@@ -178,7 +200,7 @@ export function PinEditorDialog({
       await onSave(parsed.data, processedBlob);
       onClose();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unable to save pin');
+      setErrorMsg(err instanceof Error ? err.message : t('pinEditor.saveError'));
     } finally {
       setSaving(false);
     }
@@ -193,12 +215,14 @@ export function PinEditorDialog({
     >
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <h1 id="pin-editor-title" className="text-base font-bold text-white">
-          {initialPin ? `Edit ${initialPin.name}` : 'Log New Connection'}
+          {initialPin
+            ? t('pinEditor.editTitle', { name: initialPin.name })
+            : t('pinEditor.newTitle')}
         </h1>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          aria-label="Close pin editor"
+          aria-label={t('pinEditor.closeAria')}
           className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
         >
           <X className="h-5 w-5" aria-hidden="true" />
@@ -209,7 +233,7 @@ export function PinEditorDialog({
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label htmlFor="pin-name" className="mb-1 block text-xs font-medium text-slate-300">
-              Name *
+              {t('pinEditor.nameLabel')}
             </label>
             <input
               id="pin-name"
@@ -222,12 +246,12 @@ export function PinEditorDialog({
               className="dd-input"
               autoFocus
             />
-            <span className="dd-error-msg">Name is required.</span>
+            <span className="dd-error-msg">{t('pinEditor.nameError')}</span>
           </div>
 
           <div>
             <label htmlFor="pin-age" className="mb-1 block text-xs font-medium text-slate-300">
-              Age (18+)
+              {t('pinEditor.ageLabel')}
             </label>
             <input
               id="pin-age"
@@ -239,14 +263,14 @@ export function PinEditorDialog({
               placeholder="26"
               className="dd-input"
             />
-            <span className="dd-error-msg">18–120 only.</span>
+            <span className="dd-error-msg">{t('pinEditor.ageError')}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="pin-nationality" className="mb-1 block text-xs font-medium text-slate-300">
-              Nationality *
+              {t('pinEditor.nationalityLabel')}
             </label>
             <select
               id="pin-nationality"
@@ -264,7 +288,7 @@ export function PinEditorDialog({
 
           <div>
             <label htmlFor="pin-date" className="mb-1 block text-xs font-medium text-slate-300">
-              Date Met *
+              {t('pinEditor.dateMetLabel')}
             </label>
             <input
               id="pin-date"
@@ -282,13 +306,13 @@ export function PinEditorDialog({
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-300">
               <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              3-Way Coordinates (City Search / Map Tap / Numeric)
+              {t('pinEditor.coordsHeader')}
             </span>
           </div>
 
           <div>
             <label htmlFor="pin-city-search" className="mb-1 block text-[11px] text-slate-400">
-              City Autocomplete (offline global directory)
+              {t('pinEditor.citySearchLabel')}
             </label>
             <div className="relative">
               <Search
@@ -300,7 +324,7 @@ export function PinEditorDialog({
                 type="search"
                 value={cityQuery}
                 onChange={(e) => setCityQuery(e.target.value)}
-                placeholder="Search city (e.g. Lisbon, Tokyo, Milan)..."
+                placeholder={t('pinEditor.citySearchPlaceholder')}
                 className="dd-input pl-9"
               />
             </div>
@@ -329,7 +353,7 @@ export function PinEditorDialog({
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label htmlFor="pin-city" className="mb-1 block text-[11px] text-slate-300">
-                City *
+                {t('pinEditor.cityLabel')}
               </label>
               <input
                 id="pin-city"
@@ -342,7 +366,7 @@ export function PinEditorDialog({
             </div>
             <div>
               <label htmlFor="pin-lat" className="mb-1 block text-[11px] text-slate-300">
-                Latitude *
+                {t('pinEditor.latitudeLabel')}
               </label>
               <input
                 id="pin-lat"
@@ -358,7 +382,7 @@ export function PinEditorDialog({
             </div>
             <div>
               <label htmlFor="pin-lng" className="mb-1 block text-[11px] text-slate-300">
-                Longitude *
+                {t('pinEditor.longitudeLabel')}
               </label>
               <input
                 id="pin-lng"
@@ -378,7 +402,7 @@ export function PinEditorDialog({
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
             <label htmlFor="pin-rating" className="font-medium text-slate-300">
-              Rating ({rating.toFixed(1)} ★)
+              {t('pinEditor.ratingLabel', { rating: rating.toFixed(1) })}
             </label>
             <span className="font-semibold text-amber-300">{formatTenScale(rating)}</span>
           </div>
@@ -397,7 +421,7 @@ export function PinEditorDialog({
         <div className="grid grid-cols-3 gap-2">
           <div>
             <label htmlFor="pin-status" className="mb-1 block text-xs font-medium text-slate-300">
-              Status
+              {t('pinEditor.statusLabel')}
             </label>
             <select
               id="pin-status"
@@ -407,7 +431,7 @@ export function PinEditorDialog({
             >
               {RelationshipStatusSchema.options.map((opt) => (
                 <option key={opt} value={opt}>
-                  {formatRelationshipStatus(opt)}
+                  {t(STATUS_KEYS[opt])}
                 </option>
               ))}
             </select>
@@ -415,7 +439,7 @@ export function PinEditorDialog({
 
           <div>
             <label htmlFor="pin-intimacy" className="mb-1 block text-xs font-medium text-slate-300">
-              Intimacy
+              {t('pinEditor.intimacyLabel')}
             </label>
             <select
               id="pin-intimacy"
@@ -425,7 +449,7 @@ export function PinEditorDialog({
             >
               {IntimacyLevelSchema.options.map((opt) => (
                 <option key={opt} value={opt}>
-                  {formatIntimacyLevel(opt)}
+                  {t(INTIMACY_KEYS[opt])}
                 </option>
               ))}
             </select>
@@ -433,7 +457,7 @@ export function PinEditorDialog({
 
           <div>
             <label htmlFor="pin-channel" className="mb-1 block text-xs font-medium text-slate-300">
-              Met Channel
+              {t('pinEditor.channelLabel')}
             </label>
             <select
               id="pin-channel"
@@ -458,7 +482,7 @@ export function PinEditorDialog({
               className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15"
             >
               <Camera className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
-              {photoDataUrl ? 'Replace Photo' : 'Add Photo (EXIF Stripped)'}
+              {photoDataUrl ? t('pinEditor.replacePhoto') : t('pinEditor.addPhoto')}
             </label>
             <input
               id="pin-photo-upload"
@@ -477,7 +501,7 @@ export function PinEditorDialog({
                 }}
                 className="text-xs text-rose-300 hover:underline"
               >
-                Remove photo
+                {t('pinEditor.removePhoto')}
               </button>
             )}
           </div>
@@ -485,7 +509,7 @@ export function PinEditorDialog({
           {photoDataUrl && (
             <img
               src={photoDataUrl}
-              alt="Compressed preview"
+              alt={t('pinEditor.photoPreviewAlt')}
               className="h-28 w-full rounded-lg object-cover"
             />
           )}
@@ -493,7 +517,7 @@ export function PinEditorDialog({
 
         <div>
           <label htmlFor="pin-notes" className="mb-1 block text-xs font-medium text-slate-300">
-            Private Notes (AES-GCM encrypted locally)
+            {t('pinEditor.notesLabel')}
           </label>
           <textarea
             id="pin-notes"
@@ -501,7 +525,7 @@ export function PinEditorDialog({
             maxLength={4000}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="First impressions, inside jokes, favorite spot..."
+            placeholder={t('pinEditor.notesPlaceholder')}
             className="dd-input resize-y"
           />
         </div>
@@ -515,7 +539,7 @@ export function PinEditorDialog({
               className="dd-checkbox h-4 w-4"
             />
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            Lock this entry inside Vault (masked even outside global Discreet mode)
+            {t('pinEditor.vaultLockLabel')}
           </label>
           {vaultLocked && (
             <input
@@ -523,8 +547,8 @@ export function PinEditorDialog({
               maxLength={80}
               value={vaultAlias}
               onChange={(e) => setVaultAlias(e.target.value)}
-              placeholder="Optional Vault alias (e.g. Milan Espresso)"
-              aria-label="Vault alias"
+              placeholder={t('pinEditor.vaultAliasPlaceholder')}
+              aria-label={t('pinEditor.vaultAliasAria')}
               className="dd-input text-xs"
             />
           )}
@@ -550,7 +574,7 @@ export function PinEditorDialog({
               className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 px-3 py-2.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/15"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Delete
+              {t('common.delete')}
             </button>
           ) : (
             <div />
@@ -562,14 +586,18 @@ export function PinEditorDialog({
               onClick={() => dialogRef.current?.close()}
               className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 hover:brightness-110 disabled:opacity-60"
             >
-              {saving ? 'Encrypting...' : initialPin ? 'Update Entry' : 'Save to Datédex'}
+              {saving
+                ? t('pinEditor.encrypting')
+                : initialPin
+                  ? t('pinEditor.updateEntry')
+                  : t('pinEditor.saveToDatedex')}
             </button>
           </div>
         </div>

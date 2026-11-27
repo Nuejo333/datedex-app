@@ -5,6 +5,7 @@
  * and geolocation / recenter-to-globe trigger) positioned above the permanent bottom dock.
  */
 import { Box, Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
+import { useTranslation } from '../../../platform/i18n/LanguageContext';
 
 /**
  * Props for `MapFloatingControls`.
@@ -44,6 +45,7 @@ export function MapFloatingControls({
   onZoomOut,
   onLocateOrRecenter,
 }: MapFloatingControlsProps): React.JSX.Element {
+  const { t } = useTranslation();
   // Safe-area clearance ensures controls never collide with the mobile bottom dock or iOS home indicator
   const centerBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]';
   const rightStackBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)]';
@@ -62,7 +64,7 @@ export function MapFloatingControls({
           onClick={onSearchArea}
           className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold tracking-tight text-black shadow-xl shadow-black/60 ring-1 ring-black/15 transition hover:bg-neutral-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          <span>Search this area</span>
+          <span>{t('map.searchArea')}</span>
           {isAreaFiltered && (
             <span
               aria-hidden="true"
@@ -79,9 +81,9 @@ export function MapFloatingControls({
         {/* (1) 3D-buildings / layer toggle */}
         <button
           type="button"
-          aria-label={show3DBuildings ? 'Disable 3D buildings' : 'Enable 3D buildings'}
+          aria-label={show3DBuildings ? t('map.disable3DAria') : t('map.enable3DAria')}
           aria-pressed={show3DBuildings}
-          title={show3DBuildings ? '3D Buildings On' : '3D Buildings Off'}
+          title={show3DBuildings ? t('map.buildingsOnTitle') : t('map.buildingsOffTitle')}
           onClick={onToggle3DBuildings}
           className={`flex h-10 w-10 items-center justify-center rounded-full bg-[#111111] text-white shadow-lg shadow-black/70 transition hover:bg-[#1f1f1f] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             show3DBuildings
@@ -95,12 +97,12 @@ export function MapFloatingControls({
         {/* (2) + / - Zoom Pill */}
         <div
           role="group"
-          aria-label="Map zoom controls"
+          aria-label={t('map.zoomControlsAria')}
           className="flex flex-col overflow-hidden rounded-full border border-white/15 bg-[#111111] text-white shadow-lg shadow-black/70"
         >
           <button
             type="button"
-            aria-label="Zoom in"
+            aria-label={t('map.zoomInAria')}
             onClick={onZoomIn}
             className="flex h-10 w-10 items-center justify-center transition hover:bg-[#1f1f1f] active:bg-[#2a2a2a] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-white"
           >
@@ -109,7 +111,7 @@ export function MapFloatingControls({
           <div className="mx-2 h-px bg-white/15" aria-hidden="true" />
           <button
             type="button"
-            aria-label="Zoom out"
+            aria-label={t('map.zoomOutAria')}
             onClick={onZoomOut}
             className="flex h-10 w-10 items-center justify-center transition hover:bg-[#1f1f1f] active:bg-[#2a2a2a] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-white"
           >
@@ -120,8 +122,8 @@ export function MapFloatingControls({
         {/* (3) Geolocation / Recenter-to-Globe button */}
         <button
           type="button"
-          aria-label={isZoomedIn ? 'Recenter to 3D globe' : 'Locate me or recenter globe'}
-          title={isZoomedIn ? 'Recenter to 3D Globe' : 'Locate Me / Recenter Globe'}
+          aria-label={isZoomedIn ? t('map.recenterGlobeAria') : t('map.locateOrRecenterAria')}
+          title={isZoomedIn ? t('map.recenterGlobeTitle') : t('map.locateOrRecenterTitle')}
           onClick={onLocateOrRecenter}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#111111] text-white shadow-lg shadow-black/70 transition hover:bg-[#1f1f1f] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >

@@ -16,6 +16,8 @@ import {
   type SpreadsheetImportPreview,
   type TargetPinField,
 } from '../../domain/spreadsheet/importer';
+import { useTranslation } from '../../platform/i18n/LanguageContext';
+import type { TranslationKey } from '../../platform/i18n/translations';
 
 /**
  * Props for `SpreadsheetPanel`.
@@ -25,19 +27,19 @@ export interface SpreadsheetPanelProps {
   onImportPins: (pins: PinInput[]) => Promise<number>;
 }
 
-const TARGET_FIELDS: Array<{ field: TargetPinField; label: string }> = [
-  { field: 'name', label: 'Name *' },
-  { field: 'age', label: 'Age' },
-  { field: 'nationalityCode', label: 'Nationality / Country *' },
-  { field: 'city', label: 'City *' },
-  { field: 'latitude', label: 'Latitude' },
-  { field: 'longitude', label: 'Longitude' },
-  { field: 'rating', label: 'Rating' },
-  { field: 'relationshipStatus', label: 'Status' },
-  { field: 'intimacyLevel', label: 'Intimacy' },
-  { field: 'metChannel', label: 'Met Channel' },
-  { field: 'dateMet', label: 'Date Met' },
-  { field: 'notes', label: 'Notes' },
+const TARGET_FIELDS: Array<{ field: TargetPinField; labelKey: TranslationKey }> = [
+  { field: 'name', labelKey: 'import.field.name' },
+  { field: 'age', labelKey: 'import.field.age' },
+  { field: 'nationalityCode', labelKey: 'import.field.nationalityCode' },
+  { field: 'city', labelKey: 'import.field.city' },
+  { field: 'latitude', labelKey: 'import.field.latitude' },
+  { field: 'longitude', labelKey: 'import.field.longitude' },
+  { field: 'rating', labelKey: 'import.field.rating' },
+  { field: 'relationshipStatus', labelKey: 'import.field.relationshipStatus' },
+  { field: 'intimacyLevel', labelKey: 'import.field.intimacyLevel' },
+  { field: 'metChannel', labelKey: 'import.field.metChannel' },
+  { field: 'dateMet', labelKey: 'import.field.dateMet' },
+  { field: 'notes', labelKey: 'import.field.notes' },
 ];
 
 /**
@@ -46,6 +48,7 @@ const TARGET_FIELDS: Array<{ field: TargetPinField; label: string }> = [
  * @returns {React.JSX.Element} Spreadsheet tooling panel.
  */
 export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [headers, setHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<Array<Record<string, unknown>>>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({});
@@ -65,15 +68,15 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
       const workbook = XLSX.read(buffer, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       if (!firstSheetName) {
-        throw new Error('Spreadsheet contains no sheets');
+        throw new Error(t('import.errorNoSheets'));
       }
       const worksheet = workbook.Sheets[firstSheetName];
       if (!worksheet) {
-        throw new Error('Unable to read spreadsheet worksheet');
+        throw new Error(t('import.errorUnreadable'));
       }
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
       if (rows.length === 0) {
-        throw new Error('Spreadsheet is empty');
+        throw new Error(t('import.errorEmpty'));
       }
       const detectedHeaders = Object.keys(rows[0] ?? {});
       const autoMapping = detectColumnMapping(detectedHeaders);
@@ -84,7 +87,7 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
       setMapping(autoMapping);
       setPreview(nextPreview);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to parse spreadsheet');
+      setErrorMsg(err instanceof Error ? err.message : t('import.errorParse'));
     }
   };
 
@@ -103,12 +106,12 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
     setErrorMsg(null);
     try {
       const importedCount = await onImportPins(preview.validPins);
-      setFeedback(`Imported ${importedCount} validated entries into encrypted storage.`);
+      setFeedback(t('import.success', { count: importedCount }));
       setPreview(null);
       setRawRows([]);
       setHeaders([]);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Import failed');
+      setErrorMsg(err instanceof Error ? err.message : t('import.errorCommit'));
     } finally {
       setImporting(false);
     }
@@ -134,13 +137,13 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-white">Excel / CSV Import & Export</h2>
+          <h2 className="text-sm font-bold text-white">{t('import.cardTitle')}</h2>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-rose-500 px-3.5 py-2 text-xs font-semibold text-white hover:bg-rose-400">
             <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-            Import .xlsx / .csv
+            {t('import.uploadBtn')}
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -155,7 +158,7 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            Starter Template (.xlsx)
+            {t('import.templateBtn')}
           </button>
 
           <button
@@ -164,7 +167,7 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
             onClick={() => handleExportPins('xlsx')}
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:opacity-50"
           >
-            Export .xlsx ({pins.length})
+            {t('import.exportXlsx', { count: pins.length })}
           </button>
 
           <button
@@ -173,7 +176,7 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
             onClick={() => handleExportPins('csv')}
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10 disabled:opacity-50"
           >
-            Export .csv
+            {t('import.exportCsv')}
           </button>
         </div>
       </section>
@@ -181,17 +184,17 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
       {preview && (
         <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
           <h3 className="text-xs font-bold tracking-wide text-amber-300 uppercase">
-            Column Auto-Detection & Live Preview
+            {t('import.previewTitle')}
           </h3>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {TARGET_FIELDS.map(({ field, label }) => (
+            {TARGET_FIELDS.map(({ field, labelKey }) => (
               <div key={field}>
                 <label
                   htmlFor={`map-${field}`}
                   className="mb-1 block text-[11px] font-medium text-slate-300"
                 >
-                  {label}
+                  {t(labelKey)}
                 </label>
                 <select
                   id={`map-${field}`}
@@ -199,7 +202,7 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
                   onChange={(e) => handleMappingChange(field, e.target.value)}
                   className="dd-input text-xs"
                 >
-                  <option value="">(Skip)</option>
+                  <option value="">{t('import.skipOption')}</option>
                   {headers.map((header) => (
                     <option key={header} value={header}>
                       {header}
@@ -212,13 +215,13 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
 
           <div className="rounded-xl border border-white/10 bg-slate-900/60 p-3 text-xs">
             <p className="font-semibold text-emerald-300">
-              {preview.validPins.length} valid row(s) ready to import
+              {t('import.validRowsReady', { count: preview.validPins.length })}
             </p>
             {preview.errors.length > 0 && (
               <ul className="mt-1.5 space-y-1 text-rose-300">
                 {preview.errors.slice(0, 5).map((err) => (
                   <li key={`${err.rowIndex}-${err.message}`}>
-                    Row {err.rowIndex}: {err.message}
+                    {t('import.rowError', { row: err.rowIndex, message: err.message })}
                   </li>
                 ))}
               </ul>
@@ -231,7 +234,9 @@ export function SpreadsheetPanel({ pins, onImportPins }: SpreadsheetPanelProps):
             onClick={() => void handleCommitImport()}
             className="w-full rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
           >
-            {importing ? 'Encrypting & Importing...' : `Import ${preview.validPins.length} Valid Pins`}
+            {importing
+              ? t('import.importing')
+              : t('import.commitBtn', { count: preview.validPins.length })}
           </button>
         </section>
       )}
@@ -264,6 +269,8 @@ export interface ImportViewProps extends SpreadsheetPanelProps {
  * @returns {React.JSX.Element} Full-page Import screen.
  */
 export function ImportView({ pins, onImportPins, onBack }: ImportViewProps): React.JSX.Element {
+  const { t } = useTranslation();
+
   return (
     <div data-testid="import-page" className="min-h-dvh bg-[#0b0d14] text-slate-100">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur-md">
@@ -271,14 +278,14 @@ export function ImportView({ pins, onImportPins, onBack }: ImportViewProps): Rea
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to previous view"
+            aria-label={t('common.backAria')}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            Back
+            {t('common.back')}
           </button>
 
-          <h1 className="text-base font-bold tracking-tight text-white">Import &amp; Export</h1>
+          <h1 className="text-base font-bold tracking-tight text-white">{t('import.pageTitle')}</h1>
 
           <span className="w-16" aria-hidden="true" />
         </div>

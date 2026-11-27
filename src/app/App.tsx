@@ -25,6 +25,7 @@ import type { OnboardingInput, UserProfile, VaultSettings } from '../domain/mode
 import { canShowInterstitialAd } from '../platform/ads/adProvider';
 import { webCryptoService } from '../platform/crypto/webCryptoService';
 import { requestRizzCoachStrategies } from '../platform/gemini/rizzCoachClient';
+import { LanguageProvider, useTranslation } from '../platform/i18n/LanguageContext';
 import { DEFAULT_VAULT_SETTINGS, localPinRepository } from '../platform/indexeddb/pinRepository';
 import { createBillingPortalSession, createProCheckoutSession } from '../platform/stripe/client';
 import {
@@ -77,7 +78,8 @@ type ActiveTab = 'pokedex' | 'map' | 'rizz';
  * and feature navigation without cross-feature coupling.
  * @returns {React.JSX.Element} Rendered application shell.
  */
-export function App(): React.JSX.Element {
+function AppShell(): React.JSX.Element {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [pins, setPins] = useState<DecryptedPin[]>([]);
@@ -445,7 +447,7 @@ export function App(): React.JSX.Element {
       return;
     }
     if (trimmed.length < 4) {
-      throw new Error('Vault passphrase must be at least 4 characters');
+      throw new Error(t('app.vaultPassphraseTooShort'));
     }
     const { hash, salt } = await webCryptoService.hashPassphrase(trimmed);
     await updateVault({
@@ -472,7 +474,7 @@ export function App(): React.JSX.Element {
 
   const handleRequestCoaching = async (req: RizzCoachRequest): Promise<RizzCoachResponse> => {
     if (!session?.access_token) {
-      throw new Error('Sign in required for AI Rizz Coach.');
+      throw new Error(t('app.signInRequiredRizz'));
     }
     return requestRizzCoachStrategies(session.access_token, req);
   };
@@ -490,7 +492,7 @@ export function App(): React.JSX.Element {
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-sm text-slate-400">
-        Unlocking encrypted local Datédex...
+        {t('app.unlocking')}
       </div>
     );
   }
@@ -565,10 +567,10 @@ export function App(): React.JSX.Element {
               onGoogleSignIn={signInWithGoogle}
               onSendMagicLink={sendMagicLink}
               onSyncNow={async () => {
-                if (!session?.user) throw new Error('Sign in required to sync');
+                if (!session?.user) throw new Error(t('app.signInRequiredSync'));
                 const res = await syncEncryptedPinsWithCloud(session.user.id, localPinRepository);
                 await refreshLocalState();
-                return `Synced ${res.pushed} uploaded, ${res.pulled} cloud entries.`;
+                return t('app.syncSummary', { pushed: res.pushed, pulled: res.pulled });
               }}
               onSignOut={handleSignOut}
             />
@@ -614,9 +616,9 @@ export function App(): React.JSX.Element {
   }
 
   const navItems: Array<{ id: ActiveTab; label: string; icon: typeof BookHeart }> = [
-    { id: 'pokedex', label: 'Pokédex', icon: BookHeart },
-    { id: 'map', label: 'Map', icon: Globe2 },
-    { id: 'rizz', label: 'Rizz AI', icon: Sparkles },
+    { id: 'pokedex', label: t('app.dock.pokedex'), icon: BookHeart },
+    { id: 'map', label: t('app.dock.map'), icon: Globe2 },
+    { id: 'rizz', label: t('app.dock.rizz'), icon: Sparkles },
   ];
 
   return (
@@ -679,7 +681,7 @@ export function App(): React.JSX.Element {
             <Suspense
               fallback={
                 <div className="flex h-[min(74dvh,640px)] min-h-[460px] items-center justify-center rounded-2xl border border-white/10 bg-[#050505] text-xs text-neutral-400">
-                  Loading monochrome 3D globe...
+                  {t('app.loadingGlobe')}
                 </div>
               }
             >
@@ -731,13 +733,13 @@ export function App(): React.JSX.Element {
             </Suspense>
             {mapAreaBounds && (
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-xs text-neutral-300">
-                <span>Showing pins within searched map area</span>
+                <span>{t('app.areaFilteredNotice')}</span>
                 <button
                   type="button"
                   onClick={() => setMapAreaBounds(null)}
                   className="font-semibold text-white underline underline-offset-2 hover:text-neutral-200"
                 >
-                  Clear area filter
+                  {t('app.clearAreaFilter')}
                 </button>
               </div>
             )}
@@ -771,7 +773,7 @@ export function App(): React.JSX.Element {
       {/* One-handed Floating Add Button (cleared above floating dock) */}
       <button
         type="button"
-        aria-label="Log new connection"
+        aria-label={t('app.logNewConnectionAria')}
         onClick={() => {
           setEditingPin(null);
           setDroppedCoord(null);
@@ -784,7 +786,7 @@ export function App(): React.JSX.Element {
 
       {/* Floating Glassmorphic Pill Bottom Navigation Dock */}
       <nav
-        aria-label="Primary Navigation"
+        aria-label={t('app.primaryNavAria')}
         data-testid="floating-dock"
         className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-[#121622]/75 p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/5 backdrop-blur-xl"
       >
@@ -839,5 +841,18 @@ export function App(): React.JSX.Element {
         onUpgradeClick={() => setActiveTab('rizz')}
       />
     </div>
+  );
+}
+
+/**
+ * Root Datédex PWA component providing `LanguageProvider` (`en` / `it` / `es`)
+ * around the local-first application shell.
+ * @returns {React.JSX.Element} Root application wrapped in `LanguageProvider`.
+ */
+export function App(): React.JSX.Element {
+  return (
+    <LanguageProvider>
+      <AppShell />
+    </LanguageProvider>
   );
 }

@@ -12,6 +12,7 @@ import { getCountryFlag, searchCities, type CityCoordinateEntry } from '../../..
 import type { MapCoordinate, MapMarker, MapProviderProps } from '../../../domain/map/types';
 import type { DecryptedPin } from '../../../domain/models/pin';
 import { maskPinForDiscreet, type DisplayPin } from '../../../domain/vault/masking';
+import { useTranslation } from '../../../platform/i18n/LanguageContext';
 import {
   AUTO_PITCH_ENTER_ZOOM,
   AUTO_PITCH_TARGET_DEGREES,
@@ -313,6 +314,7 @@ export function DatedexMap({
   onSearchBounds,
   accessToken,
 }: DatedexMapProps): React.JSX.Element {
+  const { t } = useTranslation();
   // Security: read public token strictly from Vite env (never hardcoded)
   const resolvedToken = (accessToken ?? import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? '').trim();
   const hasMapboxToken = resolvedToken.length > 0;
@@ -738,7 +740,7 @@ export function DatedexMap({
         lng < -180 ||
         lng > 180
       ) {
-        setManualCoordError('Enter valid lat (-90..90) & lng (-180..180).');
+        setManualCoordError(t('map.manualCoordError'));
         return;
       }
 
@@ -759,7 +761,7 @@ export function DatedexMap({
         onMapClick({ latitude: Number(lat.toFixed(5)), longitude: Number(lng.toFixed(5)) });
       }
     },
-    [manualLat, manualLng, onMapClick, onViewportChange],
+    [manualLat, manualLng, onMapClick, onViewportChange, t],
   );
 
   const handleFallbackCanvasClick = (event: MouseEvent<HTMLDivElement>): void => {
@@ -775,7 +777,7 @@ export function DatedexMap({
 
   return (
     <section
-      aria-label="Datédex Monochrome 3D Map"
+      aria-label={t('map.regionAria')}
       className="relative h-[min(74dvh,640px)] min-h-[460px] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
     >
       {/* Top 3-Way Coordinate & Search Toolbar */}
@@ -794,8 +796,8 @@ export function DatedexMap({
                 type="search"
                 value={placeQuery}
                 onChange={(e) => setPlaceQuery(e.target.value)}
-                aria-label="Search city or place on map"
-                placeholder="Fly to city (Tokyo, Milan, Lisbon)..."
+                aria-label={t('map.searchAria')}
+                placeholder={t('map.searchPlaceholder')}
                 className="h-9 w-full rounded-full border border-white/15 bg-[#111111]/95 pr-3 pl-8 text-xs text-white placeholder:text-neutral-500 shadow-lg backdrop-blur focus-visible:outline-2 focus-visible:outline-white"
               />
             </div>
@@ -804,7 +806,7 @@ export function DatedexMap({
             <button
               type="button"
               aria-pressed={dropPinMode}
-              aria-label="Toggle drop pin mode"
+              aria-label={t('map.toggleDropPinAria')}
               onClick={() => setDropPinMode((prev) => !prev)}
               className={`inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-semibold shadow-lg transition focus-visible:outline-2 focus-visible:outline-white ${
                 dropPinMode
@@ -813,14 +815,14 @@ export function DatedexMap({
               }`}
             >
               <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{dropPinMode ? 'Tap Map' : 'Drop Pin'}</span>
+              <span>{dropPinMode ? t('map.tapMap') : t('map.dropPin')}</span>
             </button>
 
             {/* Manual Lat/Lng toggle (Way 3 of 3-way coordinate entry) */}
             <button
               type="button"
               aria-expanded={manualCoordOpen}
-              aria-label="Manual latitude and longitude entry"
+              aria-label={t('map.manualCoordAria')}
               onClick={() => setManualCoordOpen((prev) => !prev)}
               className={`flex h-9 w-9 items-center justify-center rounded-full border shadow-lg transition focus-visible:outline-2 focus-visible:outline-white ${
                 manualCoordOpen
@@ -853,10 +855,10 @@ export function DatedexMap({
           {manualCoordOpen && (
             <div className="pointer-events-auto space-y-2 rounded-2xl border border-white/15 bg-[#111111]/95 p-3 shadow-xl backdrop-blur">
               <div className="flex items-center justify-between text-[11px] font-medium text-neutral-300">
-                <span>Manual Coordinates (WGS84)</span>
+                <span>{t('map.manualCoordTitle')}</span>
                 <button
                   type="button"
-                  aria-label="Close manual coordinate panel"
+                  aria-label={t('map.closeManualCoordAria')}
                   onClick={() => setManualCoordOpen(false)}
                   className="rounded-full p-0.5 text-neutral-400 hover:text-white"
                 >
@@ -871,8 +873,8 @@ export function DatedexMap({
                   max={90}
                   value={manualLat}
                   onChange={(e) => setManualLat(e.target.value)}
-                  placeholder="Lat (e.g. 48.8566)"
-                  aria-label="Manual latitude"
+                  placeholder={t('map.latPlaceholder')}
+                  aria-label={t('map.latAria')}
                   className="h-8 rounded-lg border border-white/15 bg-black/80 px-2.5 font-mono text-xs text-white placeholder:text-neutral-500"
                 />
                 <input
@@ -882,8 +884,8 @@ export function DatedexMap({
                   max={180}
                   value={manualLng}
                   onChange={(e) => setManualLng(e.target.value)}
-                  placeholder="Lng (e.g. 2.3522)"
-                  aria-label="Manual longitude"
+                  placeholder={t('map.lngPlaceholder')}
+                  aria-label={t('map.lngAria')}
                   className="h-8 rounded-lg border border-white/15 bg-black/80 px-2.5 font-mono text-xs text-white placeholder:text-neutral-500"
                 />
               </div>
@@ -898,14 +900,14 @@ export function DatedexMap({
                   onClick={() => handleManualCoordinateAction('fly')}
                   className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-medium text-white hover:bg-white/10"
                 >
-                  Fly Here
+                  {t('map.flyHere')}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleManualCoordinateAction('drop')}
                   className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black hover:bg-neutral-200"
                 >
-                  Drop Pin
+                  {t('map.dropPin')}
                 </button>
               </div>
             </div>
@@ -913,7 +915,7 @@ export function DatedexMap({
 
           {dropPinMode && (
             <div className="pointer-events-none self-center rounded-full border border-white/30 bg-black/85 px-3 py-1 text-[11px] font-medium text-white shadow">
-              Tap anywhere on the map to place a connection pin
+              {t('map.dropPinBanner')}
             </div>
           )}
       </div>
@@ -929,7 +931,7 @@ export function DatedexMap({
         <div
           data-testid="mapbox-missing-token-fallback"
           role="region"
-          aria-label="Monochrome map fallback"
+          aria-label={t('map.fallbackAria')}
           onClick={handleFallbackCanvasClick}
           className={`relative flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#1a1a1a_0%,#0a0a0a_58%,#050505_100%)] ${
             dropPinMode ? 'cursor-crosshair' : ''
@@ -985,10 +987,11 @@ export function DatedexMap({
           )}
 
           <div className="pointer-events-none relative z-10 mx-6 max-w-xs rounded-2xl border border-white/15 bg-[#111111]/90 px-4 py-3 text-center backdrop-blur">
-            <p className="text-xs font-semibold text-white">Monochrome 3D Globe Ready</p>
+            <p className="text-xs font-semibold text-white">{t('map.fallbackTitle')}</p>
             <p className="mt-1 text-[11px] text-neutral-400">
-              Add <code className="font-mono text-neutral-200">VITE_MAPBOX_ACCESS_TOKEN</code> to
-              enable live Mapbox GL v3 tiles and 3D buildings.
+              {t('map.fallbackSubtitleBefore')}{' '}
+              <code className="font-mono text-neutral-200">VITE_MAPBOX_ACCESS_TOKEN</code>{' '}
+              {t('map.fallbackSubtitleAfter')}
             </p>
           </div>
         </div>
