@@ -2,7 +2,9 @@
  * @module features/map/__tests__/DatedexMap.test
  * Vitest unit and integration test suite verifying Datédex Mapbox GL v3 monochrome overrides,
  * space fog, 3D building fill-extrusion (minzoom 14), auto-pitch lifecycle (>15 -> 55°, <13.5 -> 0°),
- * "Search this area" bounds callback, Vault / Discreet masking, and map.remove() cleanup.
+ * pointer-anchored map pins (flag + initials only, zero score), proximity clustering with
+ * zoom-to-expand, removal of search/drop-pin/manual-coord/search-area controls, Discreet mode,
+ * and map.remove() cleanup.
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,12 +27,6 @@ interface MockMapInstance {
   layers: Map<string, unknown>;
   zoomValue: number;
   pitchValue: number;
-  boundsValue: {
-    getNorth: () => number;
-    getSouth: () => number;
-    getEast: () => number;
-    getWest: () => number;
-  };
   on: ReturnType<typeof vi.fn>;
   off: ReturnType<typeof vi.fn>;
   emit: (event: string, payload?: unknown) => void;
@@ -44,7 +40,6 @@ interface MockMapInstance {
   getZoom: ReturnType<typeof vi.fn>;
   getPitch: ReturnType<typeof vi.fn>;
   getCenter: ReturnType<typeof vi.fn>;
-  getBounds: ReturnType<typeof vi.fn>;
   easeTo: ReturnType<typeof vi.fn>;
   flyTo: ReturnType<typeof vi.fn>;
   zoomIn: ReturnType<typeof vi.fn>;
@@ -54,6 +49,7 @@ interface MockMapInstance {
 
 interface MockMarkerInstance {
   element: HTMLElement;
+  anchor: string | undefined;
   lngLat: [number, number] | null;
   setLngLat: ReturnType<typeof vi.fn>;
   addTo: ReturnType<typeof vi.fn>;
@@ -73,12 +69,6 @@ vi.mock('mapbox-gl', () => {
     layers = new Map<string, unknown>();
     zoomValue: number;
     pitchValue: number;
-    boundsValue = {
-      getNorth: () => 49.0,
-      getSouth: () => 48.5,
-      getEast: () => 2.6,
-      getWest: () => 2.1,
-    };
 
     constructor(options: Record<string, unknown>) {
       this.options = options;
@@ -136,7 +126,6 @@ vi.mock('mapbox-gl', () => {
     getZoom = vi.fn(() => this.zoomValue);
     getPitch = vi.fn(() => this.pitchValue);
     getCenter = vi.fn(() => ({ lat: 48.8566, lng: 2.3522 }));
-    getBounds = vi.fn(() => this.boundsValue);
 
     easeTo = vi.fn((opts: { pitch?: number }) => {
       if (typeof opts.pitch === 'number') {
@@ -145,7 +134,12 @@ vi.mock('mapbox-gl', () => {
       return this;
     });
 
-    flyTo = vi.fn();
+    flyTo = vi.fn((opts?: { zoom?: number }) => {
+      if (opts && typeof opts.zoom === 'number') {
+        this.zoomValue = opts.zoom;
+      }
+      return this;
+    });
     zoomIn = vi.fn();
     zoomOut = vi.fn();
     remove = vi.fn();
@@ -153,10 +147,12 @@ vi.mock('mapbox-gl', () => {
 
   class MockMarker {
     element: HTMLElement;
+    anchor: string | undefined;
     lngLat: [number, number] | null = null;
 
-    constructor(options?: { element?: HTMLElement }) {
+    constructor(options?: { element?: HTMLElement; anchor?: string }) {
       this.element = options?.element ?? document.createElement('div');
+      this.anchor = options?.anchor;
       mapMockState.createdMarkers.push(this as unknown as MockMarkerInstance);
     }
 
@@ -194,14 +190,14 @@ vi.mock('mapbox-gl', () => {
   };
 });
 
-import { DatedexMap } from '../components/DatedexMap';
+import { DatedexMap, extractPinInitials } from '../components/DatedexMap';
 
 const SAMPLE_PINS: DecryptedPin[] = [
   {
     id: '11111111-1111-4111-8111-111111111111',
-    name: 'Sofia',
+    name: 'Julia Vance',
     age: 26,
-    nationalityCode: 'IT',
+    nationalityCode: 'DE',
     city: 'Milan',
     latitude: 45.4642,
     longitude: 9.19,
@@ -222,7 +218,30 @@ const SAMPLE_PINS: DecryptedPin[] = [
   },
   {
     id: '22222222-2222-4222-8222-222222222222',
-    name: 'Elena',
+    name: 'Sofia',
+    age: 25,
+    nationalityCode: 'IT',
+    city: 'Rome',
+    latitude: 41.9028,
+    longitude: 12.4964,
+    rating: 5.0,
+    relationshipStatus: 'first_date',
+    intimacyLevel: 'none',
+    metChannel: 'IRL',
+    dateMet: '2026-06-01',
+    notes: 'Trastevere gelato',
+    vaultLocked: false,
+    vaultAlias: '',
+    photoDataUrl: null,
+    photoStoragePath: null,
+    createdAt: '2026-06-01T10:00:00Z',
+    updatedAt: '2026-06-01T10:00:00Z',
+    deletedAt: null,
+    syncPending: false,
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Elena Moreau',
     age: 28,
     nationalityCode: 'FR',
     city: 'Paris',
@@ -278,6 +297,13 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     vi.restoreAllMocks();
   });
 
+  it('extracts 1- or 2-letter uppercase initials cleanly from single and multi-word names', () => {
+    expect(extractPinInitials('Julia Vance')).toBe('JV');
+    expect(extractPinInitials('Julia')).toBe('J');
+    expect(extractPinInitials('  ana maria silva  ')).toBe('AS');
+    expect(extractPinInitials('')).toBe('');
+  });
+
   it('renders graceful monochrome fallback when VITE_MAPBOX_ACCESS_TOKEN is missing', () => {
     vi.stubEnv('VITE_MAPBOX_ACCESS_TOKEN', '');
 
@@ -327,7 +353,7 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     // Trigger Mapbox style.load lifecycle event
     map.emit('style.load');
 
-    // Space fog atmosphere
+    // Space fog atmosphere & lights
     expect(map.setFog).toHaveBeenCalledWith(MONOCHROME_FOG_SPEC);
     expect(map.setLights).toHaveBeenCalled();
 
@@ -388,7 +414,6 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
 
     const map = latestMap();
 
-    // Cross zoom > 15 -> auto-ease pitch to 55°
     act(() => {
       map.zoomValue = 15.4;
       map.pitchValue = 0;
@@ -396,13 +421,11 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     });
     expect(map.easeTo).toHaveBeenCalledWith(expect.objectContaining({ pitch: 55 }));
 
-    // Simulate moveend clearing internal auto-ease flag
     act(() => {
       map.emit('moveend');
     });
     map.easeTo.mockClear();
 
-    // Zoom out below 13.5 -> smoothly flatten back to 0°
     act(() => {
       map.zoomValue = 13.0;
       map.pitchValue = 55;
@@ -415,7 +438,6 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     });
     map.easeTo.mockClear();
 
-    // Manual pitch gesture overrides auto-pitch when crossing > 15
     act(() => {
       map.emit('pitchstart', { originalEvent: new MouseEvent('mousedown') });
       map.zoomValue = 16.0;
@@ -425,8 +447,7 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(map.easeTo).not.toHaveBeenCalled();
   });
 
-  it('invokes onSearchBounds(map.getBounds()) when "Search this area" is clicked and keeps map controls visible', () => {
-    const onSearchBounds = vi.fn();
+  it('omits search bar, Drop Pin, manual coordinates, and Search this area while keeping 3D toggle and zoom controls intact', () => {
     render(
       <DatedexMap
         markers={SAMPLE_MARKERS}
@@ -436,95 +457,105 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
         onMapClick={vi.fn()}
-        onSearchBounds={onSearchBounds}
       />,
     );
 
     const map = latestMap();
-    const searchAreaBtn = screen.getByRole('button', { name: /Search this area/i });
-    fireEvent.click(searchAreaBtn);
 
-    expect(map.getBounds).toHaveBeenCalled();
-    expect(onSearchBounds).toHaveBeenCalledWith(map.boundsValue);
+    // Removed controls must be completely absent
+    expect(screen.queryByTestId('map-top-toolbar')).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Fly to city/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Drop Pin/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Toggle drop pin mode/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Manual latitude and longitude/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Search this area/i })).not.toBeInTheDocument();
 
-    // Toggle 3D buildings off -> hides extrusion layer and flattens pitch
+    // 3D toggle above +/- zoom controls and recenter button remain intact and functional
     act(() => {
       map.emit('style.load');
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Disable 3D buildings' }));
+    const toggle3DBtn = screen.getByRole('button', { name: 'Disable 3D buildings' });
+    fireEvent.click(toggle3DBtn);
     expect(map.setLayoutProperty).toHaveBeenCalledWith(BUILDINGS_3D_LAYER_ID, 'visibility', 'none');
     expect(map.easeTo).toHaveBeenCalledWith(expect.objectContaining({ pitch: 0 }));
 
-    // Recenter to globe button flies back to globe overview when zoomed in
-    fireEvent.click(screen.getByRole('button', { name: 'Recenter to 3D globe' }));
-    expect(map.flyTo).toHaveBeenCalledWith(
-      expect.objectContaining({ zoom: DEFAULT_GLOBE_ZOOM, pitch: 0, bearing: 0 }),
-    );
-
-    // Floating zoom controls work
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(map.zoomIn).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
     expect(map.zoomOut).toHaveBeenCalled();
 
-    expect(screen.getByTestId('map-floating-controls')).toBeInTheDocument();
-    expect(screen.getByTestId('map-top-toolbar')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter to 3D globe' }));
+    expect(map.flyTo).toHaveBeenCalledWith(
+      expect.objectContaining({ zoom: DEFAULT_GLOBE_ZOOM, pitch: 0, bearing: 0 }),
+    );
   });
 
-  it('hides pin names on the map in Discreet mode while preserving flags, ratings, and non-vault-locked avatars', () => {
+  it('renders single pins as pointer-anchored map pins with flag + initials only (no score) and hides initials in Discreet mode', () => {
     const { rerender } = render(
       <DatedexMap
         markers={SAMPLE_MARKERS}
         pins={SAMPLE_PINS}
         discreetMode={false}
-        viewport={{ latitude: 47, longitude: 6, zoom: 6 }}
+        viewport={{ latitude: 47, longitude: 6, zoom: 7 }}
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
         onMapClick={vi.fn()}
       />,
     );
 
-    // Unmasked Sofia shows name + avatar + rating; Vault-locked Elena shows alias & no avatar
-    const sofiaPin = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
-    expect(sofiaPin).toHaveTextContent('Sofia');
-    expect(sofiaPin).toHaveTextContent('★4.5');
-    expect(sofiaPin.querySelector('img')).not.toBeNull();
+    // Every individual marker uses bottom anchor for its pin tip
+    expect(mapMockState.createdMarkers.every((m) => m.anchor === 'bottom')).toBe(true);
 
-    const elenaPin = screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`);
+    // "Julia Vance" -> DE flag + "JV", NO full name, NO avatar img, NO score
+    const juliaPin = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
+    expect(juliaPin).toHaveAttribute('data-pin-shape', 'teardrop');
+    expect(juliaPin).toHaveTextContent('🇩🇪');
+    expect(juliaPin).toHaveTextContent('JV');
+    expect(juliaPin).not.toHaveTextContent('Julia');
+    expect(juliaPin).not.toHaveTextContent('★');
+    expect(juliaPin).not.toHaveTextContent('4.5');
+    expect(juliaPin.querySelector('img')).toBeNull();
+
+    // Single-word "Sofia" -> IT flag + "S", NO score
+    const sofiaPin = screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`);
+    expect(sofiaPin).toHaveTextContent('🇮🇹');
+    expect(sofiaPin).toHaveTextContent('S');
+    expect(sofiaPin).not.toHaveTextContent('Sofia');
+    expect(sofiaPin).not.toHaveTextContent('5.0');
+
+    // Vault-locked "Elena Moreau" (vaultAlias: "Marais Velvet") -> FR flag + "MV", NO real name/score
+    const elenaPin = screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`);
+    expect(elenaPin).toHaveTextContent('🇫🇷');
+    expect(elenaPin).toHaveTextContent('MV');
+    expect(elenaPin).not.toHaveTextContent('EM');
     expect(elenaPin).not.toHaveTextContent('Elena');
-    expect(elenaPin).toHaveTextContent('Marais Velvet');
-    expect(elenaPin.querySelector('img')).toBeNull();
+    expect(elenaPin).not.toHaveTextContent('★');
 
-    // Enable global Discreet mode -> hides pin names on the map while keeping ratings/flags and non-vault avatars
+    // Discreet mode hides initials on map pins while keeping flags visible (and still zero score)
     rerender(
       <DatedexMap
         markers={SAMPLE_MARKERS}
         pins={SAMPLE_PINS}
         discreetMode={true}
-        viewport={{ latitude: 47, longitude: 6, zoom: 6 }}
+        viewport={{ latitude: 47, longitude: 6, zoom: 7 }}
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
         onMapClick={vi.fn()}
       />,
     );
 
-    const discreetSofia = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
-    expect(discreetSofia).not.toHaveTextContent('Sofia');
-    expect(discreetSofia).not.toHaveTextContent('Milan Espresso');
-    expect(discreetSofia).toHaveTextContent('★4.5');
-    expect(discreetSofia.querySelector('img')).not.toBeNull();
-
-    const discreetElena = screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`);
-    expect(discreetElena).not.toHaveTextContent('Elena');
-    expect(discreetElena).not.toHaveTextContent('Marais Velvet');
-    expect(discreetElena).toHaveTextContent('★5.0');
-    expect(discreetElena.querySelector('img')).toBeNull();
+    const discreetJulia = screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`);
+    expect(discreetJulia).toHaveTextContent('🇩🇪');
+    expect(discreetJulia).not.toHaveTextContent('JV');
+    expect(discreetJulia).not.toHaveTextContent('★');
+    expect(discreetJulia).not.toHaveTextContent('4.5');
   });
 
-  it('clusters nearby pins at globe zoom (< 5) and supports tap-to-drop-pin mode', () => {
-    const onMapClick = vi.fn();
-
+  it('clusters nearby pins with aggregated flags + count and expands into individual pins when clicked', () => {
     render(
       <DatedexMap
         markers={SAMPLE_MARKERS}
@@ -533,24 +564,47 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
         viewport={{ latitude: 20, longitude: 0, zoom: 1.8 }}
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
-        onMapClick={onMapClick}
+        onMapClick={vi.fn()}
       />,
     );
 
     const map = latestMap();
 
-    // Milan & Paris are within globe clustering threshold at zoom 1.8
-    const clusterBtn = screen.getByTestId('map-cluster-2');
-    expect(clusterBtn).toHaveTextContent('2');
-    fireEvent.click(clusterBtn);
-    expect(map.flyTo).toHaveBeenCalledWith(expect.objectContaining({ zoom: 6 }));
+    // Milan, Rome, and Paris cluster into a single pin of 3 at globe zoom 1.8
+    const clusterBtn = screen.getByTestId('map-cluster-3');
+    expect(clusterBtn).toHaveAttribute('data-pin-shape', 'cluster-teardrop');
+    expect(clusterBtn).toHaveTextContent('🇩🇪');
+    expect(clusterBtn).toHaveTextContent('🇮🇹');
+    expect(clusterBtn).toHaveTextContent('🇫🇷');
+    expect(clusterBtn).toHaveTextContent('3');
 
-    // Toggle drop-pin mode and tap map canvas
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle drop pin mode' }));
+    const expectedCenterLng = (9.19 + 12.4964 + 2.3522) / 3;
+    const expectedCenterLat = (45.4642 + 41.9028 + 48.8566) / 3;
+
+    // Clicking the cluster flies toward the cluster center at an expansion zoom
+    fireEvent.click(clusterBtn);
+    expect(map.flyTo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        center: [
+          expect.closeTo(expectedCenterLng, 4),
+          expect.closeTo(expectedCenterLat, 4),
+        ],
+        zoom: expect.any(Number),
+      }),
+    );
+
+    const flyToArg = map.flyTo.mock.calls[0]?.[0] as { zoom: number } | undefined;
+    expect(flyToArg?.zoom ?? 0).toBeGreaterThanOrEqual(6);
+
+    // Simulating the resulting zoom/moveend expands the cluster into 3 individual pins
     act(() => {
-      map.emit('click', { lngLat: { lat: 35.6762, lng: 139.6503 } });
+      map.emit('moveend');
     });
-    expect(onMapClick).toHaveBeenCalledWith({ latitude: 35.6762, longitude: 139.6503 });
+
+    expect(screen.queryByTestId('map-cluster-3')).not.toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).toHaveTextContent('JV');
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).toHaveTextContent('S');
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).toHaveTextContent('MV');
   });
 
   it('removes all listeners, clears markers, and calls map.remove() on unmount', () => {
@@ -558,9 +612,8 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
       <DatedexMap
         markers={SAMPLE_MARKERS}
         pins={SAMPLE_PINS}
-        draftCoordinate={{ latitude: 40.7128, longitude: -74.006 }}
         discreetMode={false}
-        viewport={{ latitude: 47, longitude: 6, zoom: 6 }}
+        viewport={{ latitude: 47, longitude: 6, zoom: 7 }}
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
         onMapClick={vi.fn()}
@@ -569,7 +622,7 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
 
     const map = latestMap();
     const mountedMarkers = [...mapMockState.createdMarkers];
-    expect(mountedMarkers.length).toBeGreaterThanOrEqual(3); // 2 pins + 1 draft marker
+    expect(mountedMarkers).toHaveLength(3);
 
     unmount();
 
@@ -577,7 +630,6 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(map.off).toHaveBeenCalledWith('pitchstart', expect.any(Function));
     expect(map.off).toHaveBeenCalledWith('zoom', expect.any(Function));
     expect(map.off).toHaveBeenCalledWith('moveend', expect.any(Function));
-    expect(map.off).toHaveBeenCalledWith('click', expect.any(Function));
     expect(map.remove).toHaveBeenCalledTimes(1);
 
     for (const marker of mountedMarkers) {

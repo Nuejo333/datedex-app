@@ -1,8 +1,8 @@
 /**
  * @module features/map/components/MapFloatingControls
- * Monochrome floating map overlays: bottom-center "Search this area" white pill
- * and bottom-right stacked `#111111` controls (3D buildings toggle, zoom +/- pill,
- * and geolocation / recenter-to-globe trigger) positioned above the permanent bottom dock.
+ * Monochrome floating map overlays: bottom-right stacked `#111111` controls
+ * (3D buildings toggle above zoom +/- pill and geolocation / recenter-to-globe trigger)
+ * positioned cleanly above the permanent bottom dock.
  */
 import { Box, Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
 import { useTranslation } from '../../../platform/i18n/LanguageContext';
@@ -13,12 +13,8 @@ import { useTranslation } from '../../../platform/i18n/LanguageContext';
 export interface MapFloatingControlsProps {
   /** Whether the 3D buildings `fill-extrusion` layer and auto-tilt are active. */
   show3DBuildings: boolean;
-  /** Whether an area bounds filter is currently active. */
-  isAreaFiltered?: boolean;
   /** Whether the map is currently zoomed past globe overview (`zoom >= 4`). */
   isZoomedIn: boolean;
-  /** Invoked when the user taps the bottom-center "Search this area" white pill. */
-  onSearchArea: () => void;
   /** Invoked when the user toggles the 3D-buildings / layer button. */
   onToggle3DBuildings: () => void;
   /** Invoked when the user taps `+` to zoom in. */
@@ -37,17 +33,14 @@ export interface MapFloatingControlsProps {
  */
 export function MapFloatingControls({
   show3DBuildings,
-  isAreaFiltered = false,
   isZoomedIn,
-  onSearchArea,
   onToggle3DBuildings,
   onZoomIn,
   onZoomOut,
   onLocateOrRecenter,
 }: MapFloatingControlsProps): React.JSX.Element {
   const { t } = useTranslation();
-  // Safe-area clearance ensures controls never collide with the mobile bottom dock or iOS home indicator
-  const centerBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]';
+  // Safe-area clearance ensures controls never collide with the mobile bottom dock or Mapbox attribution
   const rightStackBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)]';
 
   return (
@@ -55,25 +48,6 @@ export function MapFloatingControls({
       data-testid="map-floating-controls"
       className="pointer-events-none absolute inset-0 z-20"
     >
-      {/* Bottom-Center: High-contrast white pill ("Search this area") with black text */}
-      <div
-        className={`pointer-events-auto absolute left-1/2 -translate-x-1/2 ${centerBottomClass}`}
-      >
-        <button
-          type="button"
-          onClick={onSearchArea}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-semibold tracking-tight text-black shadow-xl shadow-black/60 ring-1 ring-black/15 transition hover:bg-neutral-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        >
-          <span>{t('map.searchArea')}</span>
-          {isAreaFiltered && (
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-black"
-            />
-          )}
-        </button>
-      </div>
-
       {/* Bottom-Right: Vertically stacked #111111 controls with white icons */}
       <div
         className={`pointer-events-auto absolute right-3 flex flex-col items-center gap-2 ${rightStackBottomClass}`}

@@ -169,7 +169,16 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     expect(within(dock).queryByRole('button', { name: 'Import' })).not.toBeInTheDocument();
     expect(within(screen.getByTestId('sticky-top-chrome')).getByTestId('ad-banner-slot')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Hide HUD' })).not.toBeInTheDocument();
-    expect(await screen.findByText(/Secret Date Sofia/)).toBeInTheDocument();
+    // Floating + New Date button sits on bottom-left; single map pin shows flag + initials ("SS") with no score
+    const addBtn = screen.getByTestId('floating-add-button');
+    expect(addBtn.className).toContain('left-4');
+    expect(addBtn.className).not.toContain('right-4');
+    expect(screen.queryByRole('button', { name: /Search this area/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Drop Pin/i })).not.toBeInTheDocument();
+    const mapRegion = screen.getByRole('region', { name: 'Datédex Monochrome 3D Map' });
+    expect(await within(mapRegion).findByText('SS')).toBeInTheDocument();
+    expect(within(mapRegion).queryByText(/Secret Date Sofia/)).not.toBeInTheDocument();
+    expect(within(mapRegion).queryByText(/4\.5/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
     // Top-header Import button opens full-viewport Import view and returns cleanly via Back
@@ -204,7 +213,7 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     expect(await screen.findByTestId('hud-dates')).toHaveTextContent('0');
     expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
-    expect(screen.queryByText(/Secret Date Sofia/)).not.toBeInTheDocument();
+    expect(screen.queryByText('SS')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
     expect(await localPinRepository.listPins()).toHaveLength(0);

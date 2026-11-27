@@ -27,7 +27,7 @@ function I18nProbe(): React.JSX.Element {
       <span data-testid="translated-dates">{t('hud.dates')}</span>
       <span data-testid="translated-countries">{t('hud.countries')}</span>
       <span data-testid="translated-map">{t('app.dock.map')}</span>
-      <span data-testid="translated-search-area">{t('map.searchArea')}</span>
+      <span data-testid="translated-map-recenter">{t('map.recenterGlobeTitle')}</span>
       <span data-testid="brand-pokedex">{t('app.dock.pokedex')}</span>
       <span data-testid="brand-rizz">{t('app.dock.rizz')}</span>
       <span data-testid="brand-dates2bed">{t('hud.dates2Bed')}</span>
@@ -86,7 +86,7 @@ describe('i18n dictionaries and LanguageProvider', () => {
     expect(screen.getByTestId('translated-import')).toHaveTextContent('Import');
     expect(screen.getByTestId('translated-dates')).toHaveTextContent('Dates');
     expect(screen.getByTestId('translated-map')).toHaveTextContent('Map');
-    expect(screen.getByTestId('translated-search-area')).toHaveTextContent('Search this area');
+    expect(screen.getByTestId('translated-map-recenter')).toHaveTextContent('Recenter to 3D Globe');
 
     // Switch to Italian
     await user.click(screen.getByRole('button', { name: 'Switch IT' }));
@@ -95,7 +95,7 @@ describe('i18n dictionaries and LanguageProvider', () => {
     expect(screen.getByTestId('translated-dates')).toHaveTextContent('Incontri');
     expect(screen.getByTestId('translated-countries')).toHaveTextContent('Paesi');
     expect(screen.getByTestId('translated-map')).toHaveTextContent('Mappa');
-    expect(screen.getByTestId('translated-search-area')).toHaveTextContent('Cerca in questa zona');
+    expect(screen.getByTestId('translated-map-recenter')).toHaveTextContent('Ricentra sul Globo 3D');
     expect(screen.getByTestId('brand-pokedex')).toHaveTextContent('Pokédex');
     expect(screen.getByTestId('brand-rizz')).toHaveTextContent('Rizz AI');
     expect(screen.getByTestId('brand-dates2bed')).toHaveTextContent('Dates2Bed');
@@ -112,7 +112,7 @@ describe('i18n dictionaries and LanguageProvider', () => {
     expect(screen.getByTestId('translated-dates')).toHaveTextContent('Citas');
     expect(screen.getByTestId('translated-countries')).toHaveTextContent('Países');
     expect(screen.getByTestId('translated-map')).toHaveTextContent('Mapa');
-    expect(screen.getByTestId('translated-search-area')).toHaveTextContent('Buscar en esta zona');
+    expect(screen.getByTestId('translated-map-recenter')).toHaveTextContent('Recentrar al Globo 3D');
     expect(screen.getByTestId('brand-pokedex')).toHaveTextContent('Pokédex');
     expect(screen.getByTestId('brand-rizz')).toHaveTextContent('Rizz AI');
     expect(screen.getByTestId('brand-dates2bed')).toHaveTextContent('Dates2Bed');

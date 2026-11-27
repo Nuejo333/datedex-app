@@ -93,12 +93,6 @@ function AppShell(): React.JSX.Element {
   const [importOpen, setImportOpen] = useState(false);
   const [interstitialOpen, setInterstitialOpen] = useState(false);
   const [viewport, setViewport] = useState<MapViewport>({ latitude: 20, longitude: 0, zoom: 1.8 });
-  const [mapAreaBounds, setMapAreaBounds] = useState<{
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  } | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [linkedIdentities, setLinkedIdentities] = useState<UserIdentity[]>([]);
@@ -151,7 +145,6 @@ function AppShell(): React.JSX.Element {
     setUnlockOpen(false);
     setImportOpen(false);
     setInterstitialOpen(false);
-    setMapAreaBounds(null);
     setActiveTab('map');
 
     // Wipe local IndexedDB tables, in-memory crypto keys, and user-specific storage caches
@@ -171,7 +164,6 @@ function AppShell(): React.JSX.Element {
         setVaultSettings({ ...DEFAULT_VAULT_SETTINGS });
         setEditingPin(null);
         setEditorOpen(false);
-        setMapAreaBounds(null);
         setActiveTab('map');
       }
 
@@ -686,22 +678,11 @@ function AppShell(): React.JSX.Element {
               }
             >
               <DatedexMap
-                markers={
-                  mapAreaBounds
-                    ? mapMarkers.filter(
-                      (m) =>
-                        m.latitude >= mapAreaBounds.south &&
-                        m.latitude <= mapAreaBounds.north &&
-                        m.longitude >= mapAreaBounds.west &&
-                        m.longitude <= mapAreaBounds.east,
-                    )
-                    : mapMarkers
-                }
+                markers={mapMarkers}
                 pins={pins}
                 selectedPinId={editingPin?.id ?? null}
                 draftCoordinate={droppedCoord}
                 discreetMode={vaultSettings.discreetMode}
-                isAreaFiltered={Boolean(mapAreaBounds)}
                 viewport={viewport}
                 onViewportChange={setViewport}
                 onSelectMarker={(pinId) => {
@@ -717,32 +698,8 @@ function AppShell(): React.JSX.Element {
                   setDroppedCoord(coord);
                   setEditorOpen(true);
                 }}
-                onSearchBounds={(bounds) => {
-                  if (!bounds) {
-                    setMapAreaBounds(null);
-                    return;
-                  }
-                  setMapAreaBounds({
-                    north: bounds.getNorth(),
-                    south: bounds.getSouth(),
-                    east: bounds.getEast(),
-                    west: bounds.getWest(),
-                  });
-                }}
               />
             </Suspense>
-            {mapAreaBounds && (
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-xs text-neutral-300">
-                <span>{t('app.areaFilteredNotice')}</span>
-                <button
-                  type="button"
-                  onClick={() => setMapAreaBounds(null)}
-                  className="font-semibold text-white underline underline-offset-2 hover:text-neutral-200"
-                >
-                  {t('app.clearAreaFilter')}
-                </button>
-              </div>
-            )}
             <AffiliateSlot
               offers={affiliates}
               placement="map_drawer"
@@ -770,16 +727,17 @@ function AppShell(): React.JSX.Element {
         )}
       </main>
 
-      {/* One-handed Floating Add Button (cleared above floating dock) */}
+      {/* One-handed Floating Add Button on bottom-left (cleared above floating dock) */}
       <button
         type="button"
+        data-testid="floating-add-button"
         aria-label={t('app.logNewConnectionAria')}
         onClick={() => {
           setEditingPin(null);
           setDroppedCoord(null);
           setEditorOpen(true);
         }}
-        className="fixed right-4 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
+        className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>

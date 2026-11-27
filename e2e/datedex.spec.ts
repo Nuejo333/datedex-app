@@ -1,14 +1,15 @@
 /**
  * @module e2e/datedex.spec
  * Mobile-viewport (390x844) Playwright E2E suite verifying Map-first default launch,
- * 3-item floating glassmorphic dock (Pokédex, Map, Rizz AI), top-header Import button
- * to the left of Discreet, Vault embedded inside Settings, sticky Sponsored banner under
- * the stats bar, offline IndexedDB pin persistence, Discreet mode, and Pro gate.
+ * pointer-anchored flag + initials pins (no score), proximity cluster zoom-to-expand,
+ * removal of search/drop-pin/manual-coord/search-area controls, bottom-left `+` button,
+ * 3-item floating glassmorphic dock (Pokédex, Map, Rizz AI), top-header Import button,
+ * Settings Vault, sticky Sponsored banner, offline IndexedDB persistence, Discreet mode, and Pro gate.
  */
 import { expect, test } from '@playwright/test';
 
 test.describe('Datédex Mobile PWA E2E', () => {
-  test('opens directly on Map tab with floating dock, sticky ad banner, header Import, and Settings Vault', async ({
+  test('opens directly on Map tab with clean map pins, clustering, left + button, floating dock, and Settings Vault', async ({
     page,
   }) => {
     await page.goto('/');
@@ -44,15 +45,32 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(floatingDock.getByRole('button', { name: 'Vault' })).toHaveCount(0);
     await expect(floatingDock.getByRole('button', { name: 'Import' })).toHaveCount(0);
 
-    await expect(page.getByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Toggle drop pin mode' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Search this area' })).toBeVisible();
+    // Map region renders with 3D toggle + zoom controls, and ZERO search/drop-pin/manual-coord/search-area UI
+    const mapRegion = page.getByRole('region', { name: 'Datédex Monochrome 3D Map' });
+    await expect(mapRegion).toBeVisible();
+    await expect(mapRegion.getByRole('searchbox')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Toggle drop pin mode/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Manual latitude and longitude/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Search this area/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Disable 3D buildings' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zoom out' })).toBeVisible();
 
-    // 2. Log a new connection using city autocomplete + reload persistence
-    await page.getByRole('button', { name: 'Log new connection' }).click();
+    // Floating '+' New Date button sits on the bottom-left with safe clearance above the floating dock
+    const addBtn = page.getByRole('button', { name: 'Log new connection' });
+    await expect(addBtn).toBeVisible();
+    const addBox = await addBtn.boundingBox();
+    const dockBox = await floatingDock.boundingBox();
+    expect(addBox).not.toBeNull();
+    expect(dockBox).not.toBeNull();
+    expect(addBox?.x ?? 999).toBeLessThan(80);
+    expect((addBox?.y ?? 999) + (addBox?.height ?? 0)).toBeLessThanOrEqual((dockBox?.y ?? 0) + 1);
+
+    // 2. Log first connection ("Julia Vance", Milan IT) using the bottom-left '+' button
+    await addBtn.click();
     await expect(page.getByRole('heading', { name: 'Log New Connection' })).toBeVisible();
 
-    await page.getByLabel('Name *').fill('Sofia');
+    await page.getByLabel('Name *').fill('Julia Vance');
     await page.getByLabel('City Autocomplete (offline global directory)').fill('Milan');
     await page.getByRole('button', { name: 'Milan, IT' }).click();
     await page.getByLabel('Private Notes (AES-GCM encrypted locally)').fill('Brera espresso');
@@ -67,35 +85,64 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(page.getByTestId('hud-dates')).toHaveText('1');
     await expect(page.getByTestId('hud-countries')).toHaveText('1');
 
-    // 3. Verify IndexedDB persistence across full page reload (still defaults to Map tab)
+    // 3. Verify IndexedDB persistence across reload & single pin renders flag + initials ONLY (no score)
     await page.reload();
     await expect(page.getByTestId('hud-dates')).toHaveText('1');
     await expect(page.getByTestId('floating-dock').getByRole('button', { name: 'Map' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    const mapRegion = page.getByRole('region', { name: 'Datédex Monochrome 3D Map' });
     await expect(mapRegion).toBeVisible();
-    await expect(mapRegion).toContainText('Sofia');
+    const singlePin = mapRegion.locator('[data-pin-shape="teardrop"]').first();
+    await expect(singlePin).toBeVisible();
+    await expect(singlePin).toContainText('🇮🇹');
+    await expect(singlePin).toContainText('JV');
+    await expect(singlePin).not.toContainText('Julia');
+    await expect(singlePin).not.toContainText('★');
+    await expect(singlePin).not.toContainText('4.5');
 
-    // 4. On Map page, Discreet mode hides only top statistics and map pin names; sticky ad banner stays visible
+    // 4. Add a second nearby connection ("Elena", Paris FR) -> clusters into 1 larger pin of 2 and zooms to expand on click
+    await page.getByRole('button', { name: 'Log new connection' }).click();
+    await page.getByLabel('Name *').fill('Elena');
+    await page.getByLabel('City Autocomplete (offline global directory)').fill('Paris');
+    await page.getByRole('button', { name: 'Paris, FR' }).click();
+    await page.getByRole('button', { name: 'Save to Datédex' }).click();
+    if (await dismissInterstitial.isVisible()) {
+      await dismissInterstitial.click();
+    }
+
+    await expect(page.getByTestId('hud-dates')).toHaveText('2');
+    const clusterPin = mapRegion.locator('[data-pin-shape="cluster-teardrop"]');
+    await expect(clusterPin).toBeVisible();
+    await expect(clusterPin).toContainText('2');
+    await expect(clusterPin).toContainText('🇮🇹');
+    await expect(clusterPin).toContainText('🇫🇷');
+
+    // Clicking cluster zooms toward its center and expands into the 2 individual pins ("JV" & "E")
+    await clusterPin.click();
+    await expect(clusterPin).toHaveCount(0);
+    await expect(mapRegion.locator('[data-pin-shape="teardrop"]')).toHaveCount(2);
+    await expect(mapRegion).toContainText('JV');
+    await expect(mapRegion).toContainText('E');
+
+    // 5. On Map page, Discreet mode hides top statistics and map pin initials; sticky ad banner stays visible
     await page.getByRole('button', { name: 'Discreet' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toHaveCount(0);
     await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
-    await expect(mapRegion).not.toContainText('Sofia');
+    await expect(mapRegion).not.toContainText('JV');
 
     // Navigate to Pokédex tab while Discreet mode is active -> top stats stay hidden, sticky ad banner visible & cards masked
     await page.getByTestId('floating-dock').getByRole('button', { name: 'Pokédex' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toHaveCount(0);
     await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
-    await expect(page.getByTestId('pokedex-cards')).not.toContainText('Sofia');
+    await expect(page.getByTestId('pokedex-cards')).not.toContainText('Julia Vance');
 
     // Turn Discreet mode back off -> top stats and unmasked cards reappear
     await page.getByRole('button', { name: 'Active' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toBeVisible();
-    await expect(page.getByTestId('pokedex-cards')).toContainText('Sofia');
+    await expect(page.getByTestId('pokedex-cards')).toContainText('Julia Vance');
 
-    // 5. Settings pins Plan & Billing first (non-collapsible), supports collapsing other cards, and switches language
+    // 6. Settings pins Plan & Billing first (non-collapsible), supports collapsing other cards, and switches language
     await page.getByRole('button', { name: 'Account & Settings' }).click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
     const firstSectionTestId = await page
@@ -138,12 +185,12 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(page.getByRole('button', { name: 'Hide Dock' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Back to previous view' }).click();
 
-    // 6. Zero-free-message Rizz Coach Pro gate (sticky ad banner persists across tabs)
+    // 7. Zero-free-message Rizz Coach Pro gate (sticky ad banner persists across tabs)
     await page.getByTestId('floating-dock').getByRole('button', { name: 'Rizz AI' }).click();
     await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
     await expect(page.getByText('Strictly 0 free messages')).toBeVisible();
 
-    // 7. Top-header Import button opens full-page Import screen with starter template & Back return
+    // 8. Top-header Import button opens full-page Import screen with starter template & Back return
     await page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Import' }).click();
     await expect(page.getByTestId('import-page')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Starter Template (.xlsx)' })).toBeVisible();

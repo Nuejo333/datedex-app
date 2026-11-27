@@ -2,14 +2,14 @@
  * @module features/map/components/DatedexMap
  * Production Datédex Monochrome 3D-to-2D-to-3D Mapbox GL JS v3+ component implementing
  * `IMapProvider` (`MapProviderProps`) with globe space fog, street-level 3D extrusions,
- * auto-pitch lifecycle, pin clustering, 3-way coordinate entry, Vault masking, and strict cleanup.
+ * auto-pitch lifecycle, pointer-anchored map pins (flag + initials, zero score),
+ * proximity clustering with zoom-to-expand, Vault/Discreet masking, and strict cleanup.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import mapboxgl, { type LngLatBounds, type MapMouseEvent } from 'mapbox-gl';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Compass, Crosshair, MapPin, Search, X } from 'lucide-react';
-import { getCountryFlag, searchCities, type CityCoordinateEntry } from '../../../domain/countries/countries';
-import type { MapCoordinate, MapMarker, MapProviderProps } from '../../../domain/map/types';
+import { getCountryFlag } from '../../../domain/countries/countries';
+import type { MapMarker, MapProviderProps } from '../../../domain/map/types';
 import type { DecryptedPin } from '../../../domain/models/pin';
 import { maskPinForDiscreet, type DisplayPin } from '../../../domain/vault/masking';
 import { useTranslation } from '../../../platform/i18n/LanguageContext';
@@ -27,15 +27,11 @@ import { MapFloatingControls } from './MapFloatingControls';
 
 /**
  * Extended props for `DatedexMap`, strictly satisfying `MapProviderProps` (`IMapProvider`)
- * while supporting full pin masking and area bounds search.
+ * while supporting full pin masking via `maskPinForDiscreet`.
  */
 export interface DatedexMapProps extends MapProviderProps {
-  /** Optional full decrypted pins used by `maskPinForDiscreet` for vault aliases and photo masking. */
+  /** Optional full decrypted pins used by `maskPinForDiscreet` for vault aliases. */
   pins?: DecryptedPin[];
-  /** Visual indicator that a "Search this area" bounds filter is active. */
-  isAreaFiltered?: boolean;
-  /** Invoked by the bottom-center "Search this area" pill with `map.getBounds()`. */
-  onSearchBounds?: (bounds: LngLatBounds | null) => void;
   /** Optional token override; defaults strictly to `import.meta.env.VITE_MAPBOX_ACCESS_TOKEN`. */
   accessToken?: string;
 }
@@ -52,7 +48,7 @@ export interface SingleMapClusterItem {
 }
 
 /**
- * Grouped cluster renderable item returned by `clusterMapMarkers` at globe zooms (`< 5`).
+ * Grouped cluster renderable item returned by `clusterMapMarkers` when pins overlap or sit close together.
  */
 export interface GroupedMapClusterItem {
   type: 'cluster';
@@ -63,7 +59,7 @@ export interface GroupedMapClusterItem {
 }
 
 /**
- * Union of individual pin and globe cluster items rendered on the map.
+ * Union of individual pin and cluster items rendered on the map.
  */
 export type MapRenderItem = SingleMapClusterItem | GroupedMapClusterItem;
 
@@ -74,11 +70,34 @@ interface MountedMarkerHandle {
 }
 
 const DEFAULT_GLOBE_CENTER: [number, number] = [0, 20];
-const CLUSTER_MAX_ZOOM = 5;
+const CLUSTER_DISABLE_ZOOM = 15;
+const CLUSTER_EXPANSION_MAX_ZOOM = 16;
+
+/**
+ * Extracts 1- or 2-letter uppercase initials from a person's name:
+ * first letter of the first word and first letter of the last/second word (if present).
+ * @param {string} name - Full or masked display name (e.g. `"Julia Vance"` or `"Julia"`).
+ * @returns {string} Uppercase initials (e.g. `"JV"` or `"J"`), or empty string if blank.
+ */
+export function extractPinInitials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter((segment) => segment.length > 0);
+  const first = parts[0];
+  if (!first) return '';
+  const firstChar = Array.from(first)[0] ?? '';
+  if (parts.length === 1) {
+    return firstChar.toUpperCase();
+  }
+  const last = parts[parts.length - 1] ?? '';
+  const lastChar = Array.from(last)[0] ?? '';
+  return `${firstChar}${lastChar}`.toUpperCase();
+}
 
 /**
  * Resolves a map marker through `maskPinForDiscreet` (`src/domain/vault/masking.ts`) so
- * Vault / Discreet mode redacts names, cities, and avatar photos consistently across features.
+ * Vault / Discreet mode redacts sensitive fields consistently across features.
  * @param {MapMarker} marker - Lightweight `IMapProvider` marker.
  * @param {ReadonlyMap<string, DecryptedPin>} pinLookup - Optional lookup of full decrypted pins.
  * @param {boolean} discreetMode - Whether global Vault / Discreet mode is active.
@@ -118,14 +137,25 @@ export function resolveMaskedMapPin(
 }
 
 /**
- * Clusters spatially close pins at globe zoom (`zoom < 5`) and expands them to individual
- * flag/rating pins at country, city, and street zooms (`zoom >= 5`).
+ * Computes the angular clustering radius in degrees for a given zoom level (~56px screen proximity
+ * on a 512px Web Mercator tile), preventing overlapping markers at globe, regional, and city zooms.
+ * @param {number} zoom - Current map zoom level.
+ * @returns {number} Angular grouping threshold in degrees.
+ */
+export function getClusterThresholdDegrees(zoom: number): number {
+  const clampedZoom = Math.max(0, zoom);
+  return 39.375 / Math.pow(2, clampedZoom);
+}
+
+/**
+ * Clusters spatially close or overlapping pins at lower-to-mid zoom levels (`zoom < 15`)
+ * and renders standalone pins once separated.
  * @param {MapMarker[]} markers - Active markers to plot.
  * @param {number} zoom - Current map zoom level.
  * @returns {MapRenderItem[]} Renderable clusters and standalone pins.
  */
 export function clusterMapMarkers(markers: MapMarker[], zoom: number): MapRenderItem[] {
-  if (zoom >= CLUSTER_MAX_ZOOM || markers.length <= 1) {
+  if (zoom >= CLUSTER_DISABLE_ZOOM || markers.length <= 1) {
     return markers.map((marker) => ({
       type: 'pin',
       id: marker.id,
@@ -135,8 +165,7 @@ export function clusterMapMarkers(markers: MapMarker[], zoom: number): MapRender
     }));
   }
 
-  // Angular grouping threshold in degrees, tightening smoothly as the user zooms toward Mercator
-  const thresholdDeg = Math.max(5, 18 / Math.pow(2, Math.max(0, zoom - 1)));
+  const thresholdDeg = getClusterThresholdDegrees(zoom);
   const buckets: Array<{ markers: MapMarker[]; sumLat: number; sumLng: number }> = [];
 
   for (const marker of markers) {
@@ -189,101 +218,172 @@ export function clusterMapMarkers(markers: MapMarker[], zoom: number): MapRender
   });
 }
 
+/**
+ * Calculates the target zoom level needed to expand a cluster into its constituent pins
+ * (or progressive sub-clusters) when the user clicks the cluster marker.
+ * @param {GroupedMapClusterItem} cluster - Clicked cluster group.
+ * @param {number} currentZoom - Current map zoom level.
+ * @returns {number} Target expansion zoom level (`<= 16`).
+ */
+export function computeClusterExpansionZoom(
+  cluster: GroupedMapClusterItem,
+  currentZoom: number,
+): number {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  for (const marker of cluster.markers) {
+    if (marker.latitude < minLat) minLat = marker.latitude;
+    if (marker.latitude > maxLat) maxLat = marker.latitude;
+    if (marker.longitude < minLng) minLng = marker.longitude;
+    if (marker.longitude > maxLng) maxLng = marker.longitude;
+  }
+
+  const spanDeg = Math.hypot(maxLat - minLat, maxLng - minLng);
+  // Co-located pins expand directly past CLUSTER_DISABLE_ZOOM so individual markers appear
+  if (spanDeg < 0.0005) {
+    return CLUSTER_EXPANSION_MAX_ZOOM;
+  }
+
+  const minStepZoom = currentZoom < 4 ? Math.max(currentZoom + 3.5, 6) : currentZoom + 2.5;
+  let targetZoom = Math.min(CLUSTER_EXPANSION_MAX_ZOOM, minStepZoom);
+
+  // Advance zoom until clustering threshold drops below cluster spread so pins break apart cleanly
+  while (
+    targetZoom < CLUSTER_EXPANSION_MAX_ZOOM &&
+    getClusterThresholdDegrees(targetZoom) > spanDeg * 0.45
+  ) {
+    targetZoom = Math.min(CLUSTER_EXPANSION_MAX_ZOOM, targetZoom + 1);
+  }
+
+  return Number(targetZoom.toFixed(1));
+}
+
 function buildPinMarkerElement(
   marker: MapMarker,
   display: DisplayPin,
-  rawPhotoUrl: string | null,
   discreetMode: boolean,
   isSelected: boolean,
 ): HTMLButtonElement {
+  const initials = discreetMode ? '' : extractPinInitials(display.displayName);
+
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.testid = `map-pin-${marker.id}`;
+  button.dataset.pinShape = 'teardrop';
   button.dataset.masked = String(display.isMasked);
   button.setAttribute(
     'aria-label',
-    discreetMode
-      ? `${marker.city}, rated ${marker.rating.toFixed(1)}`
-      : `${display.displayName}, ${display.displayCity}, rated ${marker.rating.toFixed(1)}`,
+    discreetMode ? `${marker.city}` : `${initials} — ${display.displayCity}`,
   );
   button.className = [
-    'group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
-    'shadow-lg shadow-black/75 transition-transform focus-visible:outline-2 focus-visible:outline-white',
-    isSelected
-      ? 'scale-110 border-white bg-white text-black'
-      : 'border-white/25 bg-[#111111]/95 text-white hover:scale-105 hover:border-white/60',
+    'group relative inline-flex cursor-pointer flex-col items-center',
+    'transition-transform hover:scale-105 focus-visible:outline-none',
+    isSelected ? 'z-20 scale-110' : 'z-10',
   ].join(' ');
 
-  // Vault-locked pins always hide avatars; global Discreet mode on the map only hides pin names
-  const photoUrl = marker.isVaultLocked ? null : (rawPhotoUrl ?? display.displayPhotoUrl);
-  if (photoUrl) {
-    const avatar = document.createElement('img');
-    avatar.src = photoUrl;
-    avatar.alt = '';
-    avatar.className = 'h-4 w-4 rounded-full object-cover grayscale';
-    button.appendChild(avatar);
-  }
+  // Teardrop / pointer-anchored pin head: flag + initials ONLY (zero numeric/star score)
+  const head = document.createElement('span');
+  head.className = [
+    'relative z-10 inline-flex items-center justify-center gap-1 rounded-full border-2 text-xs font-bold leading-none',
+    'shadow-xl shadow-black/85 group-focus-visible:ring-2 group-focus-visible:ring-white',
+    initials ? 'px-2.5 py-1.5' : 'h-8 w-8 p-0',
+    isSelected
+      ? 'border-white bg-white text-black'
+      : 'border-white/80 bg-[#111111]/95 text-white group-hover:border-white',
+  ].join(' ');
 
   const flagSpan = document.createElement('span');
   flagSpan.setAttribute('aria-hidden', 'true');
+  flagSpan.className = 'text-sm leading-none';
   flagSpan.textContent = getCountryFlag(marker.nationalityCode);
-  button.appendChild(flagSpan);
+  head.appendChild(flagSpan);
 
-  // On the map page, Discreet mode hides names on pins while keeping flags and ratings visible
-  if (!discreetMode) {
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'max-w-[76px] truncate';
-    nameSpan.textContent = display.displayName;
-    button.appendChild(nameSpan);
+  // On the map page, Discreet mode hides initials while keeping nationality flags visible
+  if (initials) {
+    const initialsSpan = document.createElement('span');
+    initialsSpan.dataset.testid = `map-pin-initials-${marker.id}`;
+    initialsSpan.className = 'tracking-wide uppercase';
+    initialsSpan.textContent = initials;
+    head.appendChild(initialsSpan);
   }
 
-  const ratingSpan = document.createElement('span');
-  ratingSpan.className = isSelected
-    ? 'rounded-full bg-black/15 px-1.5 py-0.5 font-mono text-[10px] text-black'
-    : 'rounded-full bg-white/15 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200';
-  ratingSpan.textContent = `★${marker.rating.toFixed(1)}`;
-  button.appendChild(ratingSpan);
+  button.appendChild(head);
+
+  // Pointed pin tail seamlessly fused to the bottom of the pin head
+  const pointer = document.createElement('span');
+  pointer.setAttribute('aria-hidden', 'true');
+  pointer.className = [
+    '-mt-[5px] h-2.5 w-2.5 rotate-45 border-r-2 border-b-2 shadow-md',
+    isSelected
+      ? 'border-white bg-white'
+      : 'border-white/80 bg-[#111111] group-hover:border-white',
+  ].join(' ');
+  button.appendChild(pointer);
+
+  // Coordinate anchor dot directly at the bottom tip
+  const anchorDot = document.createElement('span');
+  anchorDot.setAttribute('aria-hidden', 'true');
+  anchorDot.className = 'mt-0.5 h-1.5 w-1.5 rounded-full bg-white/80 shadow shadow-black';
+  button.appendChild(anchorDot);
 
   return button;
 }
 
-function buildClusterMarkerElement(cluster: GroupedMapClusterItem): HTMLButtonElement {
+function buildClusterMarkerElement(
+  cluster: GroupedMapClusterItem,
+  ariaLabel: string,
+): HTMLButtonElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.testid = `map-cluster-${cluster.markers.length}`;
-  button.setAttribute('aria-label', `Zoom into cluster of ${cluster.markers.length} connections`);
+  button.dataset.pinShape = 'cluster-teardrop';
+  button.setAttribute('aria-label', ariaLabel);
   button.className = [
-    'inline-flex items-center gap-1.5 rounded-full border border-white/40 bg-[#111111]/95 px-2.5 py-1.5',
-    'text-xs font-bold text-white shadow-xl shadow-black/80 transition-transform hover:scale-105',
-    'focus-visible:outline-2 focus-visible:outline-white',
+    'group relative inline-flex cursor-pointer flex-col items-center',
+    'transition-transform hover:scale-105 focus-visible:outline-none z-20',
   ].join(' ');
 
   const uniqueFlags = Array.from(
     new Set(cluster.markers.map((m) => getCountryFlag(m.nationalityCode))),
   ).slice(0, 3);
 
+  // Larger monochrome map-pin head displaying aggregated flags + count badge
+  const head = document.createElement('span');
+  head.className = [
+    'relative z-10 inline-flex items-center gap-1.5 rounded-full border-2 border-white/90 bg-[#111111]/95',
+    'px-3 py-1.5 text-xs font-bold text-white shadow-2xl shadow-black/90',
+    'group-focus-visible:ring-2 group-focus-visible:ring-white',
+  ].join(' ');
+
   const flagsSpan = document.createElement('span');
   flagsSpan.setAttribute('aria-hidden', 'true');
-  flagsSpan.className = 'text-xs leading-none';
+  flagsSpan.className = 'text-sm leading-none tracking-tight';
   flagsSpan.textContent = uniqueFlags.join('');
-  button.appendChild(flagsSpan);
+  head.appendChild(flagsSpan);
 
   const countSpan = document.createElement('span');
+  countSpan.dataset.testid = 'map-cluster-count';
   countSpan.className =
-    'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 font-mono text-[10px] font-bold text-black';
+    'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-mono text-[11px] font-extrabold text-black';
   countSpan.textContent = String(cluster.markers.length);
-  button.appendChild(countSpan);
+  head.appendChild(countSpan);
+
+  button.appendChild(head);
+
+  const pointer = document.createElement('span');
+  pointer.setAttribute('aria-hidden', 'true');
+  pointer.className = '-mt-[6px] h-3 w-3 rotate-45 border-r-2 border-b-2 border-white/90 bg-[#111111] shadow-md';
+  button.appendChild(pointer);
+
+  const anchorDot = document.createElement('span');
+  anchorDot.setAttribute('aria-hidden', 'true');
+  anchorDot.className = 'mt-0.5 h-1.5 w-1.5 rounded-full bg-white/85 shadow shadow-black';
+  button.appendChild(anchorDot);
 
   return button;
-}
-
-function buildDraftMarkerElement(): HTMLDivElement {
-  const el = document.createElement('div');
-  el.dataset.testid = 'map-draft-marker';
-  el.className =
-    'pointer-events-none flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-black/80 text-white shadow-lg';
-  el.textContent = '+';
-  return el;
 }
 
 function projectLngToPercent(lng: number): number {
@@ -304,14 +404,10 @@ export function DatedexMap({
   markers,
   pins,
   selectedPinId = null,
-  draftCoordinate = null,
   discreetMode,
-  isAreaFiltered = false,
   viewport,
   onViewportChange,
   onSelectMarker,
-  onMapClick,
-  onSearchBounds,
   accessToken,
 }: DatedexMapProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -322,34 +418,24 @@ export function DatedexMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const mountedMarkersRef = useRef<MountedMarkerHandle[]>([]);
-  const draftMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const autoPitchStateRef = useRef<AutoPitchState>({ manualOverride: false, regime: 'flat' });
   const isAutoEasingPitchRef = useRef(false);
 
   const [show3DBuildings, setShow3DBuildings] = useState(true);
-  const [dropPinMode, setDropPinMode] = useState(false);
-  const [manualCoordOpen, setManualCoordOpen] = useState(false);
-  const [placeQuery, setPlaceQuery] = useState('');
-  const [manualLat, setManualLat] = useState('');
-  const [manualLng, setManualLng] = useState('');
-  const [manualCoordError, setManualCoordError] = useState<string | null>(null);
   const [liveZoom, setLiveZoom] = useState<number>(viewport.zoom || DEFAULT_GLOBE_ZOOM);
 
   const show3DBuildingsRef = useRef(show3DBuildings);
   show3DBuildingsRef.current = show3DBuildings;
 
-  const dropPinModeRef = useRef(dropPinMode);
-  dropPinModeRef.current = dropPinMode;
-
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
 
-  const onMapClickRef = useRef(onMapClick);
-  onMapClickRef.current = onMapClick;
-
   const onSelectMarkerRef = useRef(onSelectMarker);
   onSelectMarkerRef.current = onSelectMarker;
+
+  const translateRef = useRef(t);
+  translateRef.current = t;
 
   const initialViewportRef = useRef(viewport);
 
@@ -362,11 +448,6 @@ export function DatedexMap({
     }
     return map;
   }, [pins]);
-
-  const placeSuggestions = useMemo(
-    () => (placeQuery.trim().length > 0 ? searchCities(placeQuery, 5) : []),
-    [placeQuery],
-  );
 
   const clearMountedMarkers = useCallback((): void => {
     for (const handle of mountedMarkersRef.current) {
@@ -445,7 +526,7 @@ export function DatedexMap({
         map.easeTo({ pitch: decision.targetPitch, duration: 650 });
       }
 
-      // Sync zoom state on bucket transitions to update globe clustering without excessive renders
+      // Sync zoom state on bucket transitions to update clustering without excessive renders
       setLiveZoom((prev) => (Math.floor(prev) !== Math.floor(currentZoom) ? currentZoom : prev));
     };
 
@@ -461,37 +542,26 @@ export function DatedexMap({
       });
     };
 
-    const handleMapClick = (event: MapMouseEvent): void => {
-      if (!dropPinModeRef.current) return;
-      const coord: MapCoordinate = {
-        latitude: Number(event.lngLat.lat.toFixed(5)),
-        longitude: Number(event.lngLat.lng.toFixed(5)),
-      };
-      setDropPinMode(false);
-      onMapClickRef.current(coord);
-    };
-
     map.on('style.load', handleStyleLoad);
     map.on('pitchstart', handlePitchStart);
     map.on('zoom', handleZoom);
     map.on('moveend', handleMoveEnd);
-    map.on('click', handleMapClick);
 
     return () => {
       clearMountedMarkers();
-      if (draftMarkerRef.current) {
-        draftMarkerRef.current.remove();
-        draftMarkerRef.current = null;
-      }
       map.off('style.load', handleStyleLoad);
       map.off('pitchstart', handlePitchStart);
       map.off('zoom', handleZoom);
       map.off('moveend', handleMoveEnd);
-      map.off('click', handleMapClick);
       map.remove();
       mapRef.current = null;
     };
   }, [hasMapboxToken, resolvedToken, clearMountedMarkers]);
+
+  const renderItems = useMemo(
+    () => clusterMapMarkers(markers, liveZoom),
+    [markers, liveZoom],
+  );
 
   // Synchronize pin & cluster markers with Vault/Discreet masking
   useEffect(() => {
@@ -499,13 +569,15 @@ export function DatedexMap({
     if (!map) return;
 
     clearMountedMarkers();
-    const renderItems = clusterMapMarkers(markers, liveZoom);
 
     for (const item of renderItems) {
       if (item.type === 'cluster') {
-        const element = buildClusterMarkerElement(item);
+        const element = buildClusterMarkerElement(
+          item,
+          translateRef.current('map.clusterAria', { count: item.markers.length }),
+        );
         const onClick = (): void => {
-          const nextZoom = Math.min(Math.max(map.getZoom() + 3.5, 6), 12);
+          const nextZoom = computeClusterExpansionZoom(item, map.getZoom());
           map.flyTo({
             center: [item.longitude, item.latitude],
             zoom: nextZoom,
@@ -514,17 +586,15 @@ export function DatedexMap({
           });
         };
         element.addEventListener('click', onClick);
-        const mapboxMarker = new mapboxgl.Marker({ element, anchor: 'center' })
+        const mapboxMarker = new mapboxgl.Marker({ element, anchor: 'bottom' })
           .setLngLat([item.longitude, item.latitude])
           .addTo(map);
         mountedMarkersRef.current.push({ marker: mapboxMarker, element, onClick });
       } else {
         const display = resolveMaskedMapPin(item.marker, pinLookup, discreetMode);
-        const rawPhotoUrl = pinLookup.get(item.marker.id)?.photoDataUrl ?? null;
         const element = buildPinMarkerElement(
           item.marker,
           display,
-          rawPhotoUrl,
           discreetMode,
           item.marker.id === selectedPinId,
         );
@@ -548,34 +618,7 @@ export function DatedexMap({
     return () => {
       clearMountedMarkers();
     };
-  }, [markers, pinLookup, discreetMode, selectedPinId, liveZoom, clearMountedMarkers, hasMapboxToken]);
-
-  // Synchronize draft coordinate crosshair marker
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (draftMarkerRef.current) {
-      draftMarkerRef.current.remove();
-      draftMarkerRef.current = null;
-    }
-
-    if (draftCoordinate) {
-      draftMarkerRef.current = new mapboxgl.Marker({
-        element: buildDraftMarkerElement(),
-        anchor: 'center',
-      })
-        .setLngLat([draftCoordinate.longitude, draftCoordinate.latitude])
-        .addTo(map);
-    }
-
-    return () => {
-      if (draftMarkerRef.current) {
-        draftMarkerRef.current.remove();
-        draftMarkerRef.current = null;
-      }
-    };
-  }, [draftCoordinate, hasMapboxToken]);
+  }, [renderItems, pinLookup, discreetMode, selectedPinId, clearMountedMarkers, hasMapboxToken]);
 
   // Smoothly flyTo when an external pin selection changes
   useEffect(() => {
@@ -616,11 +659,6 @@ export function DatedexMap({
       return next;
     });
   }, []);
-
-  const handleSearchArea = useCallback((): void => {
-    const bounds = mapRef.current ? mapRef.current.getBounds() : null;
-    onSearchBounds?.(bounds);
-  }, [onSearchBounds]);
 
   const handleZoomIn = useCallback((): void => {
     if (mapRef.current) {
@@ -704,238 +742,24 @@ export function DatedexMap({
     flyToGlobeOverview();
   }, [liveZoom, flyToGlobeOverview, onViewportChange]);
 
-  const handleSelectPlace = useCallback(
-    (entry: CityCoordinateEntry): void => {
-      setPlaceQuery('');
-      if (mapRef.current) {
-        mapRef.current.flyTo({
-          center: [entry.longitude, entry.latitude],
-          zoom: 12.5,
-          duration: 950,
-          essential: true,
-        });
-      } else {
-        setLiveZoom(12.5);
-        onViewportChange({
-          latitude: entry.latitude,
-          longitude: entry.longitude,
-          zoom: 12.5,
-        });
-      }
-    },
-    [onViewportChange],
-  );
-
-  const handleManualCoordinateAction = useCallback(
-    (action: 'fly' | 'drop'): void => {
-      const lat = Number(manualLat);
-      const lng = Number(manualLng);
-      if (
-        !manualLat.trim() ||
-        !manualLng.trim() ||
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lng) ||
-        lat < -90 ||
-        lat > 90 ||
-        lng < -180 ||
-        lng > 180
-      ) {
-        setManualCoordError(t('map.manualCoordError'));
-        return;
-      }
-
-      setManualCoordError(null);
-      if (mapRef.current) {
-        mapRef.current.flyTo({
-          center: [lng, lat],
-          zoom: Math.max(mapRef.current.getZoom(), 14),
-          duration: 900,
-          essential: true,
-        });
-      } else {
-        onViewportChange({ latitude: lat, longitude: lng, zoom: 14 });
-      }
-
-      if (action === 'drop') {
-        setManualCoordOpen(false);
-        onMapClick({ latitude: Number(lat.toFixed(5)), longitude: Number(lng.toFixed(5)) });
-      }
-    },
-    [manualLat, manualLng, onMapClick, onViewportChange, t],
-  );
-
-  const handleFallbackCanvasClick = (event: MouseEvent<HTMLDivElement>): void => {
-    if (!dropPinMode) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const xRatio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-    const yRatio = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-    const longitude = Number((xRatio * 360 - 180).toFixed(4));
-    const latitude = Number((90 - yRatio * 180).toFixed(4));
-    setDropPinMode(false);
-    onMapClick({ latitude, longitude });
-  };
-
   return (
     <section
       aria-label={t('map.regionAria')}
       className="relative h-[min(74dvh,640px)] min-h-[460px] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
     >
-      {/* Top 3-Way Coordinate & Search Toolbar */}
-      <div
-        data-testid="map-top-toolbar"
-        className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2"
-      >
-          <div className="pointer-events-auto flex items-center gap-1.5">
-            {/* Place search input (Way 2 of 3-way coordinate entry) */}
-            <div className="relative flex-1">
-              <Search
-                className="pointer-events-none absolute top-2.5 left-3 h-3.5 w-3.5 text-neutral-400"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={placeQuery}
-                onChange={(e) => setPlaceQuery(e.target.value)}
-                aria-label={t('map.searchAria')}
-                placeholder={t('map.searchPlaceholder')}
-                className="h-9 w-full rounded-full border border-white/15 bg-[#111111]/95 pr-3 pl-8 text-xs text-white placeholder:text-neutral-500 shadow-lg backdrop-blur focus-visible:outline-2 focus-visible:outline-white"
-              />
-            </div>
-
-            {/* Tap-to-drop-pin mode toggle (Way 1 of 3-way coordinate entry) */}
-            <button
-              type="button"
-              aria-pressed={dropPinMode}
-              aria-label={t('map.toggleDropPinAria')}
-              onClick={() => setDropPinMode((prev) => !prev)}
-              className={`inline-flex h-9 items-center gap-1 rounded-full border px-3 text-xs font-semibold shadow-lg transition focus-visible:outline-2 focus-visible:outline-white ${
-                dropPinMode
-                  ? 'border-white bg-white text-black'
-                  : 'border-white/15 bg-[#111111]/95 text-white hover:bg-[#1f1f1f]'
-              }`}
-            >
-              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{dropPinMode ? t('map.tapMap') : t('map.dropPin')}</span>
-            </button>
-
-            {/* Manual Lat/Lng toggle (Way 3 of 3-way coordinate entry) */}
-            <button
-              type="button"
-              aria-expanded={manualCoordOpen}
-              aria-label={t('map.manualCoordAria')}
-              onClick={() => setManualCoordOpen((prev) => !prev)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border shadow-lg transition focus-visible:outline-2 focus-visible:outline-white ${
-                manualCoordOpen
-                  ? 'border-white bg-white text-black'
-                  : 'border-white/15 bg-[#111111]/95 text-white hover:bg-[#1f1f1f]'
-              }`}
-            >
-              <Compass className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-
-          {/* Offline city search dropdown */}
-          {placeSuggestions.length > 0 && (
-            <div className="pointer-events-auto flex flex-wrap gap-1.5 rounded-2xl border border-white/15 bg-[#111111]/95 p-2 shadow-xl backdrop-blur">
-              {placeSuggestions.map((entry) => (
-                <button
-                  key={`${entry.city}-${entry.countryCode}`}
-                  type="button"
-                  onClick={() => handleSelectPlace(entry)}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-neutral-200 hover:border-white/50 hover:text-white"
-                >
-                  <span>{getCountryFlag(entry.countryCode)}</span>
-                  <span>{entry.city}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Manual Lat/Lng numeric jump/drop bar */}
-          {manualCoordOpen && (
-            <div className="pointer-events-auto space-y-2 rounded-2xl border border-white/15 bg-[#111111]/95 p-3 shadow-xl backdrop-blur">
-              <div className="flex items-center justify-between text-[11px] font-medium text-neutral-300">
-                <span>{t('map.manualCoordTitle')}</span>
-                <button
-                  type="button"
-                  aria-label={t('map.closeManualCoordAria')}
-                  onClick={() => setManualCoordOpen(false)}
-                  className="rounded-full p-0.5 text-neutral-400 hover:text-white"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  step="any"
-                  min={-90}
-                  max={90}
-                  value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  placeholder={t('map.latPlaceholder')}
-                  aria-label={t('map.latAria')}
-                  className="h-8 rounded-lg border border-white/15 bg-black/80 px-2.5 font-mono text-xs text-white placeholder:text-neutral-500"
-                />
-                <input
-                  type="number"
-                  step="any"
-                  min={-180}
-                  max={180}
-                  value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  placeholder={t('map.lngPlaceholder')}
-                  aria-label={t('map.lngAria')}
-                  className="h-8 rounded-lg border border-white/15 bg-black/80 px-2.5 font-mono text-xs text-white placeholder:text-neutral-500"
-                />
-              </div>
-              {manualCoordError && (
-                <p role="alert" className="text-[11px] text-neutral-300">
-                  {manualCoordError}
-                </p>
-              )}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleManualCoordinateAction('fly')}
-                  className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-medium text-white hover:bg-white/10"
-                >
-                  {t('map.flyHere')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleManualCoordinateAction('drop')}
-                  className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black hover:bg-neutral-200"
-                >
-                  {t('map.dropPin')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {dropPinMode && (
-            <div className="pointer-events-none self-center rounded-full border border-white/30 bg-black/85 px-3 py-1 text-[11px] font-medium text-white shadow">
-              {t('map.dropPinBanner')}
-            </div>
-          )}
-      </div>
-
       {/* Mapbox GL JS v3 Canvas OR Graceful Monochrome Fallback when Token Missing */}
       {hasMapboxToken ? (
         <div
           ref={containerRef}
           data-testid="mapbox-canvas"
-          className={`h-full w-full ${dropPinMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
+          className="h-full w-full cursor-grab active:cursor-grabbing"
         />
       ) : (
         <div
           data-testid="mapbox-missing-token-fallback"
           role="region"
           aria-label={t('map.fallbackAria')}
-          onClick={handleFallbackCanvasClick}
-          className={`relative flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#1a1a1a_0%,#0a0a0a_58%,#050505_100%)] ${
-            dropPinMode ? 'cursor-crosshair' : ''
-          }`}
+          className="relative flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#1a1a1a_0%,#0a0a0a_58%,#050505_100%)]"
         >
           {/* Subtle grayscale globe graticule */}
           <div
@@ -943,48 +767,106 @@ export function DatedexMap({
             className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:16.666%_25%]"
           />
 
-          {/* Render masked/unmasked pins even in tokenless offline fallback */}
-          {markers.map((marker) => {
+          {/* Render clustered or individual map-pin markers in tokenless fallback */}
+          {renderItems.map((item) => {
+            const left = projectLngToPercent(item.longitude);
+            const top = projectLatToPercent(item.latitude);
+
+            if (item.type === 'cluster') {
+              const uniqueFlags = Array.from(
+                new Set(item.markers.map((m) => getCountryFlag(m.nationalityCode))),
+              ).slice(0, 3);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-testid={`fallback-cluster-${item.markers.length}`}
+                  data-pin-shape="cluster-teardrop"
+                  aria-label={t('map.clusterAria', { count: item.markers.length })}
+                  onClick={() => {
+                    const nextZoom = computeClusterExpansionZoom(item, liveZoom);
+                    setLiveZoom(nextZoom);
+                    onViewportChange({
+                      latitude: item.latitude,
+                      longitude: item.longitude,
+                      zoom: nextZoom,
+                    });
+                  }}
+                  style={{ left: `${left}%`, top: `${top}%` }}
+                  className="group absolute z-20 inline-flex -translate-x-1/2 -translate-y-full flex-col items-center transition-transform hover:scale-105"
+                >
+                  <span className="relative z-10 inline-flex items-center gap-1.5 rounded-full border-2 border-white/90 bg-[#111111]/95 px-3 py-1.5 text-xs font-bold text-white shadow-2xl shadow-black/90">
+                    <span aria-hidden="true" className="text-sm leading-none tracking-tight">
+                      {uniqueFlags.join('')}
+                    </span>
+                    <span
+                      data-testid="fallback-cluster-count"
+                      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-mono text-[11px] font-extrabold text-black"
+                    >
+                      {item.markers.length}
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="-mt-[6px] h-3 w-3 rotate-45 border-r-2 border-b-2 border-white/90 bg-[#111111] shadow-md"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 h-1.5 w-1.5 rounded-full bg-white/85 shadow shadow-black"
+                  />
+                </button>
+              );
+            }
+
+            const marker = item.marker;
             const display = resolveMaskedMapPin(marker, pinLookup, discreetMode);
-            const left = projectLngToPercent(marker.longitude);
-            const top = projectLatToPercent(marker.latitude);
+            const initials = discreetMode ? '' : extractPinInitials(display.displayName);
             const isSelected = marker.id === selectedPinId;
             return (
               <button
                 key={marker.id}
                 type="button"
                 data-testid={`fallback-pin-${marker.id}`}
+                data-pin-shape="teardrop"
+                aria-label={discreetMode ? `${marker.city}` : `${initials} — ${display.displayCity}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectMarker(marker.id);
                 }}
                 style={{ left: `${left}%`, top: `${top}%` }}
-                className={`absolute z-10 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-md ${
-                  isSelected
-                    ? 'border-white bg-white text-black'
-                    : 'border-white/25 bg-[#111111]/95 text-white'
+                className={`group absolute inline-flex -translate-x-1/2 -translate-y-full flex-col items-center transition-transform hover:scale-105 ${
+                  isSelected ? 'z-20 scale-110' : 'z-10'
                 }`}
               >
-                <span>{getCountryFlag(marker.nationalityCode)}</span>
-                {!discreetMode && (
-                  <span className="max-w-[70px] truncate">{display.displayName}</span>
-                )}
-                <span className="font-mono text-[10px] opacity-80">★{marker.rating.toFixed(1)}</span>
+                <span
+                  className={`relative z-10 inline-flex items-center justify-center gap-1 rounded-full border-2 text-xs font-bold leading-none shadow-xl shadow-black/85 ${
+                    initials ? 'px-2.5 py-1.5' : 'h-8 w-8 p-0'
+                  } ${
+                    isSelected
+                      ? 'border-white bg-white text-black'
+                      : 'border-white/80 bg-[#111111]/95 text-white'
+                  }`}
+                >
+                  <span aria-hidden="true" className="text-sm leading-none">
+                    {getCountryFlag(marker.nationalityCode)}
+                  </span>
+                  {initials && (
+                    <span className="tracking-wide uppercase">{initials}</span>
+                  )}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={`-mt-[5px] h-2.5 w-2.5 rotate-45 border-r-2 border-b-2 shadow-md ${
+                    isSelected ? 'border-white bg-white' : 'border-white/80 bg-[#111111]'
+                  }`}
+                />
+                <span
+                  aria-hidden="true"
+                  className="mt-0.5 h-1.5 w-1.5 rounded-full bg-white/80 shadow shadow-black"
+                />
               </button>
             );
           })}
-
-          {draftCoordinate && (
-            <div
-              style={{
-                left: `${projectLngToPercent(draftCoordinate.longitude)}%`,
-                top: `${projectLatToPercent(draftCoordinate.latitude)}%`,
-              }}
-              className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-white"
-            >
-              <Crosshair className="h-5 w-5" aria-hidden="true" />
-            </div>
-          )}
 
           <div className="pointer-events-none relative z-10 mx-6 max-w-xs rounded-2xl border border-white/15 bg-[#111111]/90 px-4 py-3 text-center backdrop-blur">
             <p className="text-xs font-semibold text-white">{t('map.fallbackTitle')}</p>
@@ -997,12 +879,10 @@ export function DatedexMap({
         </div>
       )}
 
-      {/* Floating Bottom-Center & Bottom-Right Monochrome Controls */}
+      {/* Floating Bottom-Right Monochrome Controls (3D toggle above +/- zoom & recenter) */}
       <MapFloatingControls
         show3DBuildings={show3DBuildings}
-        isAreaFiltered={isAreaFiltered}
         isZoomedIn={liveZoom >= 4}
-        onSearchArea={handleSearchArea}
         onToggle3DBuildings={handleToggle3DBuildings}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
