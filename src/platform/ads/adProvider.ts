@@ -69,3 +69,15 @@ export function markInterstitialAdShown(nowMs: number = Date.now()): void {
     // Ignore storage quota / private-browsing exceptions
   }
 }
+
+/**
+ * Removes cached interstitial ad timestamps from `localStorage` during sign-out cleanup.
+ * @returns {void}
+ */
+export function clearAdFrequencyCache(): void {
+  try {
+    globalThis.localStorage?.removeItem(INTERSTITIAL_LAST_SHOWN_KEY);
+  } catch {
+    // Ignore storage access exceptions
+  }
+}

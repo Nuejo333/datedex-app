@@ -96,6 +96,8 @@ function getOrCreateDeviceSecret(): string {
  */
 export class WebCryptoService implements ICryptoService {
   private readonly deviceSecretProvider: () => string;
+  private readonly derivedKeyCache = new Map<string, CryptoKey>();
+  private cachedDeviceSecret: string | null = null;
 
   /**
    * Constructs a `WebCryptoService` instance.
@@ -103,6 +105,44 @@ export class WebCryptoService implements ICryptoService {
    */
   constructor(deviceSecretProvider: () => string = getOrCreateDeviceSecret) {
     this.deviceSecretProvider = deviceSecretProvider;
+  }
+
+  private getDeviceSecret(): string {
+    if (this.cachedDeviceSecret !== null) {
+      return this.cachedDeviceSecret;
+    }
+    const secret = this.deviceSecretProvider();
+    this.cachedDeviceSecret = secret;
+    return secret;
+  }
+
+  private async getOrDeriveDeviceKey(
+    salt: Uint8Array<ArrayBuffer>,
+    saltB64: string,
+  ): Promise<CryptoKey> {
+    const cached = this.derivedKeyCache.get(saltB64);
+    if (cached) return cached;
+    const derived = await deriveAesKeyFromSecret(this.getDeviceSecret(), salt);
+    this.derivedKeyCache.set(saltB64, derived);
+    return derived;
+  }
+
+  /**
+   * Clears all cached CryptoKeys and secret references held in memory.
+   * Called on sign-out and account switching to ensure zero key material lingers.
+   * @returns {void}
+   */
+  clearInMemoryKeys(): void {
+    this.derivedKeyCache.clear();
+    this.cachedDeviceSecret = null;
+  }
+
+  /**
+   * Reports whether any derived keys or cached secrets are currently held in memory.
+   * @returns {boolean} True when in-memory key cache is non-empty.
+   */
+  hasInMemoryKeys(): boolean {
+    return this.derivedKeyCache.size > 0 || this.cachedDeviceSecret !== null;
   }
 
   /**
@@ -157,7 +197,23 @@ export class WebCryptoService implements ICryptoService {
    */
   async encryptSensitiveFields(payload: SensitivePinFields): Promise<EncryptedEnvelope> {
     const validated = SensitivePinFieldsSchema.parse(payload);
-    return this.encryptWithSecret(validated, this.deviceSecretProvider());
+    const subtle = getSubtle();
+    const salt = new Uint8Array(new ArrayBuffer(16));
+    const iv = new Uint8Array(new ArrayBuffer(12));
+    globalThis.crypto.getRandomValues(salt);
+    globalThis.crypto.getRandomValues(iv);
+
+    const saltB64 = toBase64(salt);
+    const key = await this.getOrDeriveDeviceKey(salt, saltB64);
+    const plaintext = new TextEncoder().encode(JSON.stringify(validated));
+    const cipherBuffer = await subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+
+    return {
+      version: 1,
+      iv: toBase64(iv),
+      salt: saltB64,
+      ciphertext: toBase64(new Uint8Array(cipherBuffer)),
+    };
   }
 
   /**
@@ -167,7 +223,15 @@ export class WebCryptoService implements ICryptoService {
    * @throws {Error} When decryption fails on an invalid key or tampered payload.
    */
   async decryptSensitiveFields(envelope: EncryptedEnvelope): Promise<SensitivePinFields> {
-    const raw = await this.decryptWithSecret(envelope, this.deviceSecretProvider());
+    const parsedEnvelope = EncryptedEnvelopeSchema.parse(envelope);
+    const subtle = getSubtle();
+    const salt = fromBase64(parsedEnvelope.salt);
+    const iv = fromBase64(parsedEnvelope.iv);
+    const cipherBytes = fromBase64(parsedEnvelope.ciphertext);
+
+    const key = await this.getOrDeriveDeviceKey(salt, parsedEnvelope.salt);
+    const plainBuffer = await subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBytes);
+    const raw = JSON.parse(new TextDecoder().decode(plainBuffer)) as unknown;
     return SensitivePinFieldsSchema.parse(raw);
   }
 

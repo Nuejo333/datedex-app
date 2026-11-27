@@ -157,6 +157,40 @@ export async function syncProfileToCloud(userId: string, profile: UserProfile): 
 }
 
 /**
+ * Fetches the authenticated user's saved profile from `public.user_profiles`
+ * so returning users can restore their onboarding state after signing back in.
+ * @param {string} userId - Authenticated Supabase user UUID.
+ * @returns {Promise<UserProfile | null>} Hydrated `UserProfile` or null when absent/offline.
+ */
+export async function fetchProfileFromCloud(userId: string): Promise<UserProfile | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('display_name, home_country, sync_photos, vault_enabled, onboarding_completed, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: 'local-profile',
+    displayName: typeof data.display_name === 'string' && data.display_name.trim()
+      ? data.display_name.trim()
+      : 'Explorer',
+    homeCountry: typeof data.home_country === 'string' && data.home_country.length === 2
+      ? data.home_country.toUpperCase()
+      : 'US',
+    syncPhotos: Boolean(data.sync_photos),
+    vaultEnabled: Boolean(data.vault_enabled),
+    onboardingCompleted: Boolean(data.onboarding_completed),
+    privacyPledgeAccepted: true,
+    updatedAt: typeof data.updated_at === 'string' ? data.updated_at : new Date().toISOString(),
+  };
+}
+
+/**
  * Reads the authenticated user's Stripe-synced subscription status from `public.subscriptions`.
  * Note: UI display only — `/api/rizz-coach` enforces Pro status independently server-side.
  * @param {string} userId - Authenticated Supabase user UUID.

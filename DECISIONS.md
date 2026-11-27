@@ -26,3 +26,10 @@
 - **Trade-offs:** Reused `signInWithGoogle`, `sendMagicLink`, and a hoisted `handleSignOut` in `App.tsx` (shared with `VaultPanel`) instead of creating a second Supabase client or duplicating session hooks.
 - **Accessibility:** Used native `<dialog closedby="any">` via `useNativeModalDialog`, semantic `<form>` with `autocomplete="username"` and `spellCheck={false}`, and post-interaction `aria-invalid` + dynamic `aria-describedby` error linking.
 - **Pointers:** `src/features/vault/AccountSettingsDialog.tsx:41`, `src/features/pokedex/HudStatsBar.tsx:86`, `src/app/App.tsx:315`, `src/platform/supabase/auth.ts:14`.
+
+## 2026-11-27 — Logout Session Cleanup, First-Sign-In Onboarding Gate & Full-Page Settings View
+- **Assumptions:** Signing out or switching Supabase accounts must wipe local pins/photos/profile/vault state and in-memory keys without ever triggering onboarding while signed out; onboarding should run once per authenticated `user.id`.
+- **Trade-offs:** Tracked per-user onboarding completion via `user_profiles.onboarding_completed` and a non-sensitive `datedex_onboarding_completed_${user.id}` flag (`src/platform/supabase/sessionCleanup.ts:18`) preserved across logout, while `datedex.auth.lastUserId` isolates accounts without affecting offline-only IndexedDB persistence.
+- **Trade-offs:** Replaced the compact `AccountSettingsDialog` modal with a full-viewport dark-mode `SettingsView` (`src/features/vault/SettingsView.tsx:52`) structured into Account & Authentication, Connected Accounts, Plan & Billing, and Privacy & Preferences with sticky `← Back` navigation preserving `activeTab`.
+- **Auth & Crypto:** Scoped `WebCryptoService` in-memory key caching strictly to device-secret fields (purged via `clearInMemoryKeys()` on logout) and combined `user.identities` + `supabase.auth.getUserIdentities()` + `linkIdentity({ provider: 'google' })` with friendly `identity_already_exists` error handling.
+- **Pointers:** `src/features/vault/SettingsView.tsx:52`, `src/platform/supabase/sessionCleanup.ts:18`, `src/platform/supabase/auth.ts:109`, `src/app/App.tsx:137`.

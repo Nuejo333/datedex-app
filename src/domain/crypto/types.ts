@@ -54,4 +54,10 @@ export interface ICryptoService {
    * @returns {Promise<BackupPayload>} Validated decrypted backup payload.
    */
   decryptBackupBundle(bundle: EncryptedBackupBundle, passphrase: string): Promise<BackupPayload>;
+
+  /**
+   * Clears any derived or cached encryption keys held in memory (invoked on sign-out).
+   * @returns {void}
+   */
+  clearInMemoryKeys(): void;
 }

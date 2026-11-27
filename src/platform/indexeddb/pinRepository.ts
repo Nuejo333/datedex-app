@@ -348,6 +348,31 @@ export class LocalPinRepository {
 
     return { restoredPins: payload.pins.filter((p) => !p.deletedAt).length };
   }
+
+  /**
+   * Atomically wipes all user-specific IndexedDB tables (`pins`, `pinPhotos`, `profile`,
+   * `vaultSettings`) and clears any cached encryption keys in memory.
+   * Invoked on sign-out and account switch so a previous account's dates never remain visible.
+   * @returns {Promise<void>}
+   */
+  async clearUserData(): Promise<void> {
+    await this.db.transaction(
+      'rw',
+      this.db.pins,
+      this.db.pinPhotos,
+      this.db.profile,
+      this.db.vaultSettings,
+      async () => {
+        await Promise.all([
+          this.db.pins.clear(),
+          this.db.pinPhotos.clear(),
+          this.db.profile.clear(),
+          this.db.vaultSettings.clear(),
+        ]);
+      },
+    );
+    this.crypto.clearInMemoryKeys();
+  }
 }
 
 /**

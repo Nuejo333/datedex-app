@@ -25,6 +25,7 @@ export interface OnboardingFlowProps {
   onComplete: (input: OnboardingInput) => Promise<void>;
   onGoogleSignIn: () => Promise<void>;
   onSendMagicLink: (email: string) => Promise<void>;
+  onOpenSignIn?: () => void;
 }
 
 /**
@@ -37,6 +38,7 @@ export function OnboardingFlow({
   onComplete,
   onGoogleSignIn,
   onSendMagicLink,
+  onOpenSignIn,
 }: OnboardingFlowProps): React.JSX.Element {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [displayName, setDisplayName] = useState('');
@@ -108,12 +110,25 @@ export function OnboardingFlow({
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Welcome to Datédex
-          </h1>
-          <p className="text-sm text-slate-300">
-            Your private, encrypted romantic passport — Track Your Dating Journey.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight text-white">
+                Welcome to Datédex
+              </h1>
+              <p className="text-sm text-slate-300">
+                Your private, encrypted romantic passport — Track Your Dating Journey.
+              </p>
+            </div>
+            {supabaseConfigured && onOpenSignIn && (
+              <button
+                type="button"
+                onClick={onOpenSignIn}
+                className="shrink-0 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </header>
 
         {step === 1 && (

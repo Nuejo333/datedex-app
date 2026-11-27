@@ -13,7 +13,7 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User, UserIdentity } from '@supabase/supabase-js';
 import { computeHudStats } from '../domain/analytics/pokedexStats';
 import type { MapCoordinate, MapMarker, MapViewport } from '../domain/map/types';
 import {
@@ -31,7 +31,11 @@ import { requestRizzCoachStrategies } from '../platform/gemini/rizzCoachClient';
 import { DEFAULT_VAULT_SETTINGS, localPinRepository } from '../platform/indexeddb/pinRepository';
 import { createBillingPortalSession, createProCheckoutSession } from '../platform/stripe/client';
 import {
+  extractAuthRedirectError,
+  fetchUserIdentities,
   getActiveSession,
+  hasGoogleIdentity,
+  linkGoogleIdentity,
   sendMagicLink,
   signInWithGoogle,
   signOutCloud,
@@ -39,8 +43,16 @@ import {
 } from '../platform/supabase/auth';
 import { isSupabaseConfigured } from '../platform/supabase/client';
 import { fetchActiveAffiliateOffers } from '../platform/supabase/monetization';
+import {
+  clearClientUserSessionData,
+  getLastAuthenticatedUserId,
+  isUserOnboardingCompletedLocally,
+  isolateAccountOnSignIn,
+  markUserOnboardingCompletedLocally,
+} from '../platform/supabase/sessionCleanup';
 import { getPrivatePinPhotoSignedUrl, uploadPrivatePinPhoto } from '../platform/supabase/storage';
 import {
+  fetchProfileFromCloud,
   fetchUserSubscription,
   syncEncryptedPinsWithCloud,
   syncProfileToCloud,
@@ -57,7 +69,7 @@ import { HudStatsBar, RestoreHudPill } from '../features/pokedex/HudStatsBar';
 import { PokedexDashboard } from '../features/pokedex/PokedexDashboard';
 import { RizzCoachPanel } from '../features/rizz-coach/RizzCoachPanel';
 import { SpreadsheetPanel } from '../features/spreadsheet/SpreadsheetPanel';
-import { AccountSettingsDialog } from '../features/vault/AccountSettingsDialog';
+import { SettingsView } from '../features/vault/SettingsView';
 import { VaultLockDialog } from '../features/vault/VaultLockDialog';
 import { VaultPanel } from '../features/vault/VaultPanel';
 
@@ -88,11 +100,16 @@ export function App(): React.JSX.Element {
     west: number;
   } | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [linkedIdentities, setLinkedIdentities] = useState<UserIdentity[]>([]);
+  const [identitiesLoading, setIdentitiesLoading] = useState(false);
+  const [authRedirectError, setAuthRedirectError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null);
   const [affiliates, setAffiliates] = useState<AffiliateOffer[]>([]);
 
   const supabaseConfigured = isSupabaseConfigured();
   const isPro = isProSubscriptionActive(subscription);
+  const isGooglePaired = useMemo(() => hasGoogleIdentity(linkedIdentities), [linkedIdentities]);
 
   const refreshLocalState = useCallback(async () => {
     const [loadedProfile, loadedPins, loadedVault] = await Promise.all([
@@ -117,10 +134,112 @@ export function App(): React.JSX.Element {
     setVaultSettings(loadedVault);
   }, []);
 
+  const resetSignedOutState = useCallback(async () => {
+    // Clear all in-memory user data immediately so no previous account's dates flash on screen
+    // and ensure onboarding NEVER opens when signed out.
+    setSession(null);
+    setNeedsOnboarding(false);
+    setLinkedIdentities([]);
+    setIdentitiesLoading(false);
+    setSubscription(null);
+    setPins([]);
+    setProfile(null);
+    setVaultSettings({ ...DEFAULT_VAULT_SETTINGS });
+    setEditingPin(null);
+    setEditorOpen(false);
+    setDroppedCoord(null);
+    setUnlockOpen(false);
+    setInterstitialOpen(false);
+    setMapAreaBounds(null);
+    setActiveTab('pokedex');
+
+    // Wipe local IndexedDB tables, in-memory crypto keys, and user-specific storage caches
+    await clearClientUserSessionData(localPinRepository);
+  }, []);
+
+  const hydrateAuthenticatedUser = useCallback(
+    async (user: User, isMounted: () => boolean = () => true): Promise<void> => {
+      // Seed immediately from session user identities while refreshing from Supabase Auth
+      setLinkedIdentities(user.identities ?? []);
+      setIdentitiesLoading(true);
+
+      const { switchedAccount } = await isolateAccountOnSignIn(user.id, localPinRepository);
+      if (switchedAccount && isMounted()) {
+        setPins([]);
+        setProfile(null);
+        setVaultSettings({ ...DEFAULT_VAULT_SETTINGS });
+        setEditingPin(null);
+        setEditorOpen(false);
+        setMapAreaBounds(null);
+      }
+
+      const [sub, identities, cloudProfile] = await Promise.all([
+        fetchUserSubscription(user.id),
+        fetchUserIdentities(user),
+        fetchProfileFromCloud(user.id),
+      ]);
+
+      if (!isMounted()) return;
+      setSubscription(sub);
+      setLinkedIdentities(identities);
+      setIdentitiesLoading(false);
+
+      // Pull encrypted pins for the authenticated account; fail softly if temporarily offline
+      let pulledPins = 0;
+      try {
+        const syncResult = await syncEncryptedPinsWithCloud(user.id, localPinRepository);
+        pulledPins = syncResult.pulled;
+      } catch {
+        // Offline or transient network error; local state remains available
+      }
+
+      // Determine per-user first-time onboarding status (localStorage + cloud user_profiles)
+      const completedLocally = isUserOnboardingCompletedLocally(user.id);
+      const completedInCloud = Boolean(cloudProfile?.onboardingCompleted) || pulledPins > 0;
+      const alreadyOnboarded = completedLocally || completedInCloud;
+
+      if (alreadyOnboarded) {
+        markUserOnboardingCompletedLocally(user.id);
+      }
+
+      const localProfile = await localPinRepository.getProfile();
+      if (!localProfile && alreadyOnboarded) {
+        await localPinRepository.saveProfile(
+          cloudProfile ?? {
+            id: 'local-profile',
+            displayName: user.email?.split('@')[0] || 'Explorer',
+            homeCountry: 'US',
+            syncPhotos: false,
+            vaultEnabled: false,
+            onboardingCompleted: true,
+            privacyPledgeAccepted: true,
+            updatedAt: new Date().toISOString(),
+          },
+        );
+      }
+
+      if (isMounted()) {
+        setNeedsOnboarding(!alreadyOnboarded);
+        await refreshLocalState();
+      }
+    },
+    [refreshLocalState],
+  );
+
   useEffect(() => {
     let mounted = true;
+    const isMounted = (): boolean => mounted;
+
+    const redirectErr = extractAuthRedirectError();
+    if (redirectErr) {
+      setAuthRedirectError(redirectErr);
+      setSettingsOpen(true);
+      if (typeof globalThis.history?.replaceState === 'function') {
+        globalThis.history.replaceState({}, '', globalThis.location.pathname);
+      }
+    }
+
     const init = async (): Promise<void> => {
-      await refreshLocalState();
       const [authState, activeOffers] = await Promise.all([
         getActiveSession(),
         fetchActiveAffiliateOffers(),
@@ -130,27 +249,48 @@ export function App(): React.JSX.Element {
       setAffiliates(activeOffers);
 
       if (authState.user) {
-        const sub = await fetchUserSubscription(authState.user.id);
-        if (mounted) setSubscription(sub);
+        await hydrateAuthenticatedUser(authState.user, isMounted);
+      } else {
+        // If a previous cloud session expired/signed out while the app was closed, wipe its cache;
+        // preserve local IndexedDB untouched for 100% offline-only users (lastUserId === null).
+        if (getLastAuthenticatedUserId() !== null) {
+          await clearClientUserSessionData(localPinRepository);
+        }
+        await refreshLocalState();
       }
-      setLoading(false);
+      if (mounted) {
+        setLoading(false);
+      }
     };
     void init();
 
-    const unsub = subscribeAuthChanges((_event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession?.user) {
-        void fetchUserSubscription(nextSession.user.id).then(setSubscription);
-      } else {
-        setSubscription(null);
+    const unsub = subscribeAuthChanges((event, nextSession) => {
+      if (event === 'SIGNED_OUT') {
+        void resetSignedOutState();
+        return;
       }
+
+      if (!nextSession?.user) {
+        if (getLastAuthenticatedUserId() !== null) {
+          void resetSignedOutState();
+        } else {
+          setSession(null);
+          setNeedsOnboarding(false);
+          setLinkedIdentities([]);
+          setSubscription(null);
+        }
+        return;
+      }
+
+      setSession(nextSession);
+      void hydrateAuthenticatedUser(nextSession.user, isMounted);
     });
 
     return () => {
       mounted = false;
       unsub();
     };
-  }, [refreshLocalState]);
+  }, [hydrateAuthenticatedUser, refreshLocalState, resetSignedOutState]);
 
   const hudStats = useMemo(() => computeHudStats(pins), [pins]);
 
@@ -195,7 +335,10 @@ export function App(): React.JSX.Element {
     }
 
     setProfile(nextProfile);
+    setNeedsOnboarding(false);
+    setSettingsOpen(false);
     if (session?.user) {
+      markUserOnboardingCompletedLocally(session.user.id);
       await syncProfileToCloud(session.user.id, nextProfile);
     }
   };
@@ -294,7 +437,7 @@ export function App(): React.JSX.Element {
 
   const handleUpgradeToPro = async (): Promise<void> => {
     if (!session?.access_token) {
-      setActiveTab('vault');
+      setSettingsOpen(true);
       return;
     }
     const checkoutUrl = await createProCheckoutSession(session.access_token);
@@ -316,8 +459,12 @@ export function App(): React.JSX.Element {
 
   const handleSignOut = async (): Promise<void> => {
     await signOutCloud();
-    setSession(null);
-    setSubscription(null);
+    await resetSignedOutState();
+  };
+
+  const handleCloseSettings = (): void => {
+    setSettingsOpen(false);
+    setAuthRedirectError(null);
   };
 
   if (loading) {
@@ -328,7 +475,9 @@ export function App(): React.JSX.Element {
     );
   }
 
-  if (!profile?.onboardingCompleted) {
+  // Onboarding opens ONLY after first sign-in for an authenticated user who has not completed it.
+  // Signed-out sessions (including immediately after Sign Out) NEVER trigger onboarding.
+  if (session?.user && needsOnboarding) {
     return (
       <OnboardingFlow
         supabaseConfigured={supabaseConfigured}
@@ -336,6 +485,38 @@ export function App(): React.JSX.Element {
         onGoogleSignIn={signInWithGoogle}
         onSendMagicLink={sendMagicLink}
       />
+    );
+  }
+
+  // Full-viewport Settings screen (returns cleanly to the previous tab via Back)
+  if (settingsOpen) {
+    return (
+      <>
+        <SettingsView
+          supabaseConfigured={supabaseConfigured}
+          signedInEmail={session?.user?.email ?? null}
+          isPro={isPro}
+          isGooglePaired={isGooglePaired}
+          identitiesLoading={identitiesLoading}
+          discreetMode={vaultSettings.discreetMode}
+          hasPassphraseLock={vaultSettings.hasPassphraseLock}
+          localPinCount={pins.length}
+          authRedirectError={authRedirectError}
+          onBack={handleCloseSettings}
+          onGoogleSignIn={signInWithGoogle}
+          onSendMagicLink={sendMagicLink}
+          onLinkGoogle={linkGoogleIdentity}
+          onSignOut={handleSignOut}
+          onUpgradeToPro={handleUpgradeToPro}
+          onOpenBillingPortal={handleOpenPortal}
+          onToggleDiscreet={handleToggleDiscreet}
+        />
+        <VaultLockDialog
+          open={unlockOpen}
+          onClose={() => setUnlockOpen(false)}
+          onVerifyPassphrase={handleVerifyUnlock}
+        />
+      </>
     );
   }
 
@@ -508,13 +689,23 @@ export function App(): React.JSX.Element {
             vaultSettings={vaultSettings}
             supabaseConfigured={supabaseConfigured}
             signedInEmail={session?.user?.email ?? null}
-            syncPhotos={profile.syncPhotos}
+            syncPhotos={profile?.syncPhotos ?? false}
             onToggleDiscreet={handleToggleDiscreet}
             onToggleHideHud={() => void updateVault({ hideHud: !vaultSettings.hideHud })}
             onToggleHideDock={() => void updateVault({ hideDock: !vaultSettings.hideDock })}
             onToggleSyncPhotos={async (next) => {
+              const baseProfile: UserProfile = profile ?? {
+                id: 'local-profile',
+                displayName: session?.user?.email?.split('@')[0] || 'Explorer',
+                homeCountry: 'US',
+                syncPhotos: false,
+                vaultEnabled: vaultSettings.hasPassphraseLock,
+                onboardingCompleted: true,
+                privacyPledgeAccepted: true,
+                updatedAt: new Date().toISOString(),
+              };
               const updated = await localPinRepository.saveProfile({
-                ...profile,
+                ...baseProfile,
                 syncPhotos: next,
                 updatedAt: new Date().toISOString(),
               });
@@ -618,17 +809,6 @@ export function App(): React.JSX.Element {
         open={unlockOpen}
         onClose={() => setUnlockOpen(false)}
         onVerifyPassphrase={handleVerifyUnlock}
-      />
-
-      <AccountSettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        supabaseConfigured={supabaseConfigured}
-        signedInEmail={session?.user?.email ?? null}
-        isPro={isPro}
-        onGoogleSignIn={signInWithGoogle}
-        onSendMagicLink={sendMagicLink}
-        onSignOut={handleSignOut}
       />
 
       <InterstitialAdDialog
