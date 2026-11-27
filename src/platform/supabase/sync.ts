@@ -57,6 +57,19 @@ export async function syncEncryptedPinsWithCloud(
   const pendingRows = localRows.filter((row) => row.syncPending);
 
   if (pendingRows.length > 0) {
+    // Map extended statuses/channels onto Postgres CHECK-constraint-compatible column values
+    // while exact values remain preserved inside the AES-GCM `encrypted_sensitive` envelope.
+    const toPgStatus = (status: StoredPin['relationshipStatus']): string => {
+      if (status === 'standby_ghosted' || status === 'standby_ghosting') return 'archived';
+      if (status === 'friends') return 'talking';
+      return status;
+    };
+    const toPgChannel = (channel: StoredPin['metChannel']): string => {
+      if (channel === 'Dating App') return 'Other';
+      if (channel === 'IRL - Work' || channel === 'IRL - Other') return 'IRL';
+      return channel;
+    };
+
     const upsertPayload = pendingRows.map((pin) => ({
       id: pin.id,
       user_id: userId,
@@ -67,8 +80,8 @@ export async function syncEncryptedPinsWithCloud(
       latitude: pin.latitude,
       longitude: pin.longitude,
       rating: pin.rating,
-      relationship_status: pin.relationshipStatus,
-      met_channel: pin.metChannel,
+      relationship_status: toPgStatus(pin.relationshipStatus),
+      met_channel: toPgChannel(pin.metChannel),
       date_met: pin.dateMet,
       vault_locked: pin.vaultLocked,
       photo_storage_path: pin.photoStoragePath,
@@ -110,6 +123,9 @@ export async function syncEncryptedPinsWithCloud(
       age: raw.age,
       nationalityCode: raw.nationality_code,
       city: raw.city,
+      birthCity: '',
+      livingCity: '',
+      metCity: '',
       latitude: raw.latitude,
       longitude: raw.longitude,
       rating: Number(raw.rating),
@@ -182,6 +198,7 @@ export async function fetchProfileFromCloud(userId: string): Promise<UserProfile
     homeCountry: typeof data.home_country === 'string' && data.home_country.length === 2
       ? data.home_country.toUpperCase()
       : 'US',
+    datingPreference: 'everyone',
     syncPhotos: Boolean(data.sync_photos),
     vaultEnabled: Boolean(data.vault_enabled),
     onboardingCompleted: Boolean(data.onboarding_completed),

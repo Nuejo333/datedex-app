@@ -5,6 +5,7 @@
  */
 import type { DecryptedPin, MetChannel, RelationshipStatus } from '../models/pin';
 import { COUNTRY_BY_CODE, TOTAL_UN_COUNTRIES, getCountryFlag } from '../countries/countries';
+import { matchesPinCityFilter } from '../filters/pinCityFilters';
 
 /**
  * Top HUD bar summary statistics.
@@ -66,6 +67,9 @@ export interface PokedexFilter {
   channel: MetChannel | 'all';
   minRating: number;
   sortBy: 'recent' | 'rating' | 'name';
+  birthCity?: string;
+  livingCity?: string;
+  metCity?: string;
 }
 
 /**
@@ -87,7 +91,11 @@ export function computeHudStats(pins: readonly DecryptedPin[]): HudStats {
   const countries = new Set(active.map((pin) => pin.nationalityCode));
   const ratingSum = active.reduce((acc, pin) => acc + pin.rating, 0);
   const bedCount = active.filter(
-    (pin) => pin.intimacyLevel === 'third_base' || pin.intimacyLevel === 'home_run',
+    (pin) =>
+      pin.intimacyLevel === 'third_base' ||
+      pin.intimacyLevel === 'home_run' ||
+      pin.intimacyLevel === 'oral_foreplay' ||
+      pin.intimacyLevel === 'sex',
   ).length;
 
   return {
@@ -179,7 +187,12 @@ export function computeBadges(pins: readonly DecryptedPin[]): AchievementBadge[]
   const countries = new Set(active.map((pin) => pin.nationalityCode)).size;
   const cities = new Set(active.map((pin) => pin.city.trim().toLowerCase())).size;
   const fiveStarCount = active.filter((pin) => pin.rating >= 4.5).length;
-  const irlCount = active.filter((pin) => pin.metChannel === 'IRL').length;
+  const irlCount = active.filter(
+    (pin) =>
+      pin.metChannel === 'IRL' ||
+      pin.metChannel === 'IRL - Work' ||
+      pin.metChannel === 'IRL - Other',
+  ).length;
 
   return [
     {
@@ -246,9 +259,18 @@ export function filterPins(
     if (pin.rating < filter.minRating) {
       return false;
     }
+    if (
+      !matchesPinCityFilter(pin, {
+        birthCity: filter.birthCity,
+        livingCity: filter.livingCity,
+        metCity: filter.metCity,
+      })
+    ) {
+      return false;
+    }
     if (query) {
       const countryName = (COUNTRY_BY_CODE.get(pin.nationalityCode)?.name ?? '').toLowerCase();
-      const haystack = `${pin.name} ${pin.city} ${countryName} ${pin.metChannel} ${pin.notes}`.toLowerCase();
+      const haystack = `${pin.name} ${pin.city} ${pin.birthCity ?? ''} ${pin.livingCity ?? ''} ${pin.metCity ?? ''} ${countryName} ${pin.metChannel} ${pin.notes}`.toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     return true;

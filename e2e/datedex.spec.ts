@@ -68,13 +68,17 @@ test.describe('Datédex Mobile PWA E2E', () => {
 
     // 2. Log first connection ("Julia Vance", Milan IT) using the bottom-left '+' button
     await addBtn.click();
-    await expect(page.getByRole('heading', { name: 'Log New Connection' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Connection' })).toBeVisible();
+    await expect(page.getByTestId('zero-cloud-badge')).toContainText(
+      'Stored on Device Only · Zero Cloud Upload',
+    );
 
     await page.getByLabel('Name *').fill('Julia Vance');
-    await page.getByLabel('City Autocomplete (offline global directory)').fill('Milan');
-    await page.getByRole('button', { name: 'Milan, IT' }).click();
-    await page.getByLabel('Private Notes (AES-GCM encrypted locally)').fill('Brera espresso');
-    await page.getByRole('button', { name: 'Save to Datédex' }).click();
+    await page.getByLabel('Quick Search Country Filter Bar').fill('IT');
+    await page.getByTestId('country-chip-IT').click();
+    await page.getByLabel('City Where They Were Born').fill('Milan');
+    await page.getByLabel('The Story / How It Went').fill('Brera espresso');
+    await page.getByRole('button', { name: 'Save #1' }).click();
 
     // Close frequency-capped free-tier interstitial if opened
     const dismissInterstitial = page.getByRole('button', { name: 'Dismiss sponsored modal' });
@@ -101,12 +105,12 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(singlePin).not.toContainText('★');
     await expect(singlePin).not.toContainText('4.5');
 
-    // 4. Add a second nearby connection ("Elena", Paris FR) -> clusters into 1 larger pin of 2 and zooms to expand on click
+    // 4. Add a second nearby connection ("Elena", France -> Paris capital fallback) -> clusters into 1 larger pin of 2 and zooms to expand on click
     await page.getByRole('button', { name: 'Log new connection' }).click();
     await page.getByLabel('Name *').fill('Elena');
-    await page.getByLabel('City Autocomplete (offline global directory)').fill('Paris');
-    await page.getByRole('button', { name: 'Paris, FR' }).click();
-    await page.getByRole('button', { name: 'Save to Datédex' }).click();
+    await page.getByLabel('Quick Search Country Filter Bar').fill('FR');
+    await page.getByTestId('country-chip-FR').click();
+    await page.getByRole('button', { name: 'Save #2' }).click();
     if (await dismissInterstitial.isVisible()) {
       await dismissInterstitial.click();
     }

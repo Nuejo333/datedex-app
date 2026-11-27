@@ -33,6 +33,9 @@ const STATUS_TRANSLATION_KEY: Record<RelationshipStatus, TranslationKey> = {
   dating: 'status.dating',
   situationship: 'status.situationship',
   exclusive: 'status.exclusive',
+  standby_ghosted: 'status.standby_ghosted',
+  standby_ghosting: 'status.standby_ghosting',
+  friends: 'status.friends',
   archived: 'status.archived',
 };
 

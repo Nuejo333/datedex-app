@@ -19,6 +19,9 @@ export interface MapMarker {
   id: string;
   label: string;
   city: string;
+  birthCity?: string;
+  livingCity?: string;
+  metCity?: string;
   nationalityCode: string;
   latitude: number;
   longitude: number;

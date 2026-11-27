@@ -1,7 +1,8 @@
 /**
  * @module platform/indexeddb/db
  * Dexie IndexedDB database definition enabling 100% offline-first storage
- * of encrypted pins, EXIF-stripped local photos, profile settings, and Vault metadata.
+ * of encrypted pins, EXIF-stripped local photos, local-only media vault items,
+ * profile settings, and Vault metadata.
  */
 import Dexie, { type Table } from 'dexie';
 import type { StoredPin } from '../../domain/models/pin';
@@ -17,6 +18,21 @@ export interface LocalPinPhoto {
 }
 
 /**
+ * Device-only local media vault record (image or video) persisted strictly in IndexedDB
+ * with zero cloud upload.
+ */
+export interface LocalMediaRecord {
+  id: string;
+  pinId: string;
+  mimeType: string;
+  kind: 'image' | 'video';
+  fileName: string;
+  dataUrl: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+/**
  * Persisted Vault settings row stored under fixed key `'vault-settings'`.
  */
 export interface StoredVaultRow extends VaultSettings {
@@ -29,6 +45,7 @@ export interface StoredVaultRow extends VaultSettings {
 export class DatedexDb extends Dexie {
   pins!: Table<StoredPin, string>;
   pinPhotos!: Table<LocalPinPhoto, string>;
+  localMedia!: Table<LocalMediaRecord, string>;
   profile!: Table<UserProfile, string>;
   vaultSettings!: Table<StoredVaultRow, string>;
 
@@ -41,6 +58,13 @@ export class DatedexDb extends Dexie {
     this.version(1).stores({
       pins: 'id, nationalityCode, dateMet, updatedAt, deletedAt, syncPending',
       pinPhotos: 'pinId, updatedAt',
+      profile: 'id',
+      vaultSettings: 'id',
+    });
+    this.version(2).stores({
+      pins: 'id, nationalityCode, dateMet, updatedAt, deletedAt, syncPending',
+      pinPhotos: 'pinId, updatedAt',
+      localMedia: 'id, pinId, createdAt',
       profile: 'id',
       vaultSettings: 'id',
     });

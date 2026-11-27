@@ -8,6 +8,7 @@ import {
   PinInputSchema,
   type DecryptedPin,
   type PinInput,
+  type SensitivePinFields,
   type StoredPin,
 } from '../../domain/models/pin';
 import {
@@ -16,6 +17,7 @@ import {
   type BackupPayload,
   type EncryptedBackupBundle,
   type UserProfile,
+  type UserProfileInput,
   type VaultSettings,
 } from '../../domain/models/profile';
 import { datedexDb, type DatedexDb } from './db';
@@ -61,35 +63,68 @@ export class LocalPinRepository {
 
     const decrypted: DecryptedPin[] = [];
     for (const row of activeRows) {
-      let notes = '';
-      let intimacyLevel: DecryptedPin['intimacyLevel'] = 'none';
-      let vaultAlias = '';
+      let sensitive: SensitivePinFields = {
+        notes: '',
+        intimacyLevel: 'none',
+        vaultAlias: '',
+      };
       try {
-        const sensitive = await this.crypto.decryptSensitiveFields(row.encryptedSensitive);
-        notes = sensitive.notes;
-        intimacyLevel = sensitive.intimacyLevel;
-        vaultAlias = sensitive.vaultAlias;
+        sensitive = await this.crypto.decryptSensitiveFields(row.encryptedSensitive);
       } catch {
         // Preserve record visibility if device key rotated; user can restore backup
-        notes = '[Encrypted with a different device key]';
+        sensitive = {
+          notes: '[Encrypted with a different device key]',
+          intimacyLevel: 'none',
+          vaultAlias: '',
+        };
       }
+
+      const nationalities =
+        sensitive.nationalities && sensitive.nationalities.length > 0
+          ? sensitive.nationalities
+          : [row.nationalityCode];
 
       decrypted.push({
         id: row.id,
+        entryNumber: sensitive.entryNumber,
+        avatarEmoji: sensitive.avatarEmoji,
         name: row.name,
         age: row.age,
+        birthYearOrDob: sensitive.birthYearOrDob ?? '',
+        heightCm: sensitive.heightCm ?? '',
+        instagramHandle: sensitive.instagramHandle ?? '',
+        personalityTags: sensitive.personalityTags ?? [],
+        characterVote: sensitive.characterVote,
+        mindVote: sensitive.mindVote,
+        aestheticVote: sensitive.aestheticVote,
         nationalityCode: row.nationalityCode,
+        nationalities,
         city: row.city,
+        birthCity: row.birthCity ?? sensitive.birthCity ?? '',
+        livingCity: row.livingCity ?? sensitive.livingCity ?? '',
+        metCity: row.metCity ?? sensitive.metCity ?? '',
         latitude: row.latitude,
         longitude: row.longitude,
         rating: row.rating,
-        relationshipStatus: row.relationshipStatus,
-        intimacyLevel,
-        metChannel: row.metChannel,
+        relationshipStatus: sensitive.relationshipStatusExact ?? row.relationshipStatus,
+        intimacyLevel: sensitive.intimacyLevel,
+        metChannel: sensitive.metChannelExact ?? row.metChannel,
+        introducedByFriend: sensitive.introducedByFriend ?? '',
+        spentCurrency: sensitive.spentCurrency ?? 'EUR',
+        spentAmount: sensitive.spentAmount ?? null,
+        datesToBed: sensitive.datesToBed ?? null,
+        firstIntimateDate: sensitive.firstIntimateDate ?? '',
+        hookupCity: sensitive.hookupCity ?? '',
+        bedVote: sensitive.bedVote,
+        hookupLocations: sensitive.hookupLocations ?? [],
+        intimateTags: sensitive.intimateTags ?? [],
         dateMet: row.dateMet,
-        notes,
+        notes: sensitive.notes,
+        highlights: sensitive.highlights ?? '',
+        generalVote: sensitive.generalVote,
         vaultLocked: row.vaultLocked,
-        vaultAlias,
+        vaultAlias: sensitive.vaultAlias,
+        mediaItemIds: sensitive.mediaItemIds ?? [],
         photoDataUrl: photoMap.get(row.id) ?? null,
         photoStoragePath: row.photoStoragePath,
         createdAt: row.createdAt,
@@ -122,11 +157,45 @@ export class LocalPinRepository {
     const id = parsed.id ?? globalThis.crypto.randomUUID();
     const existing = await this.db.pins.get(id);
 
-    const encryptedSensitive = await this.crypto.encryptSensitiveFields({
+    const nationalities =
+      parsed.nationalities && parsed.nationalities.length > 0
+        ? Array.from(new Set([parsed.nationalityCode, ...parsed.nationalities]))
+        : [parsed.nationalityCode];
+
+    const sensitivePayload: SensitivePinFields = {
       notes: parsed.notes,
       intimacyLevel: parsed.intimacyLevel,
       vaultAlias: parsed.vaultAlias,
-    });
+      avatarEmoji: parsed.avatarEmoji,
+      entryNumber: parsed.entryNumber,
+      birthYearOrDob: parsed.birthYearOrDob,
+      heightCm: parsed.heightCm,
+      instagramHandle: parsed.instagramHandle,
+      personalityTags: parsed.personalityTags,
+      characterVote: parsed.characterVote,
+      mindVote: parsed.mindVote,
+      aestheticVote: parsed.aestheticVote,
+      nationalities,
+      birthCity: parsed.birthCity,
+      livingCity: parsed.livingCity,
+      metCity: parsed.metCity,
+      metChannelExact: parsed.metChannel,
+      relationshipStatusExact: parsed.relationshipStatus,
+      introducedByFriend: parsed.introducedByFriend,
+      spentCurrency: parsed.spentCurrency,
+      spentAmount: parsed.spentAmount,
+      datesToBed: parsed.datesToBed,
+      firstIntimateDate: parsed.firstIntimateDate,
+      hookupCity: parsed.hookupCity,
+      bedVote: parsed.bedVote,
+      hookupLocations: parsed.hookupLocations,
+      intimateTags: parsed.intimateTags,
+      highlights: parsed.highlights,
+      generalVote: parsed.generalVote,
+      mediaItemIds: parsed.mediaItemIds,
+    };
+
+    const encryptedSensitive = await this.crypto.encryptSensitiveFields(sensitivePayload);
 
     const stored: StoredPin = {
       id,
@@ -134,6 +203,9 @@ export class LocalPinRepository {
       age: parsed.age ?? null,
       nationalityCode: parsed.nationalityCode,
       city: parsed.city,
+      birthCity: parsed.birthCity,
+      livingCity: parsed.livingCity,
+      metCity: parsed.metCity,
       latitude: parsed.latitude,
       longitude: parsed.longitude,
       rating: parsed.rating,
@@ -165,20 +237,45 @@ export class LocalPinRepository {
 
     return {
       id: stored.id,
+      entryNumber: parsed.entryNumber,
+      avatarEmoji: parsed.avatarEmoji,
       name: stored.name,
       age: stored.age,
+      birthYearOrDob: parsed.birthYearOrDob,
+      heightCm: parsed.heightCm,
+      instagramHandle: parsed.instagramHandle,
+      personalityTags: parsed.personalityTags,
+      characterVote: parsed.characterVote,
+      mindVote: parsed.mindVote,
+      aestheticVote: parsed.aestheticVote,
       nationalityCode: stored.nationalityCode,
+      nationalities,
       city: stored.city,
+      birthCity: parsed.birthCity,
+      livingCity: parsed.livingCity,
+      metCity: parsed.metCity,
       latitude: stored.latitude,
       longitude: stored.longitude,
       rating: stored.rating,
       relationshipStatus: stored.relationshipStatus,
       intimacyLevel: parsed.intimacyLevel,
       metChannel: stored.metChannel,
+      introducedByFriend: parsed.introducedByFriend,
+      spentCurrency: parsed.spentCurrency,
+      spentAmount: parsed.spentAmount,
+      datesToBed: parsed.datesToBed,
+      firstIntimateDate: parsed.firstIntimateDate,
+      hookupCity: parsed.hookupCity,
+      bedVote: parsed.bedVote,
+      hookupLocations: parsed.hookupLocations,
+      intimateTags: parsed.intimateTags,
       dateMet: stored.dateMet,
       notes: parsed.notes,
+      highlights: parsed.highlights,
+      generalVote: parsed.generalVote,
       vaultLocked: stored.vaultLocked,
       vaultAlias: parsed.vaultAlias,
+      mediaItemIds: parsed.mediaItemIds,
       photoDataUrl: currentPhoto?.dataUrl ?? null,
       photoStoragePath: stored.photoStoragePath,
       createdAt: stored.createdAt,
@@ -189,7 +286,7 @@ export class LocalPinRepository {
   }
 
   /**
-   * Soft-deletes a pin locally (preserves tombstone for cloud sync).
+   * Soft-deletes a pin locally (preserves tombstone for cloud sync) and removes local media items.
    * @param {string} pinId - Pin UUID to delete.
    * @returns {Promise<void>}
    */
@@ -203,6 +300,7 @@ export class LocalPinRepository {
       syncPending: true,
     });
     await this.db.pinPhotos.delete(pinId);
+    await this.db.localMedia.where('pinId').equals(pinId).delete();
   }
 
   /**
@@ -246,10 +344,10 @@ export class LocalPinRepository {
 
   /**
    * Saves the local user profile in Dexie.
-   * @param {UserProfile} profile - Profile fields to persist.
+   * @param {UserProfileInput} profile - Profile fields to persist.
    * @returns {Promise<UserProfile>} Validated saved profile.
    */
-  async saveProfile(profile: UserProfile): Promise<UserProfile> {
+  async saveProfile(profile: UserProfileInput): Promise<UserProfile> {
     const validated = UserProfileSchema.parse(profile);
     await this.db.profile.put(validated);
     return validated;
@@ -348,8 +446,8 @@ export class LocalPinRepository {
   }
 
   /**
-   * Atomically wipes all user-specific IndexedDB tables (`pins`, `pinPhotos`, `profile`,
-   * `vaultSettings`) and clears any cached encryption keys in memory.
+   * Atomically wipes all user-specific IndexedDB tables (`pins`, `pinPhotos`, `localMedia`,
+   * `profile`, `vaultSettings`) and clears any cached encryption keys in memory.
    * Invoked on sign-out and account switch so a previous account's dates never remain visible.
    * @returns {Promise<void>}
    */
@@ -358,12 +456,14 @@ export class LocalPinRepository {
       'rw',
       this.db.pins,
       this.db.pinPhotos,
+      this.db.localMedia,
       this.db.profile,
       this.db.vaultSettings,
       async () => {
         await Promise.all([
           this.db.pins.clear(),
           this.db.pinPhotos.clear(),
+          this.db.localMedia.clear(),
           this.db.profile.clear(),
           this.db.vaultSettings.clear(),
         ]);

@@ -203,6 +203,7 @@ function AppShell(): React.JSX.Element {
             id: 'local-profile',
             displayName: user.email?.split('@')[0] || 'Explorer',
             homeCountry: 'US',
+            datingPreference: 'everyone',
             syncPhotos: false,
             vaultEnabled: false,
             onboardingCompleted: true,
@@ -312,6 +313,9 @@ function AppShell(): React.JSX.Element {
         id: p.id,
         label: p.name,
         city: p.city,
+        birthCity: p.birthCity,
+        livingCity: p.livingCity,
+        metCity: p.metCity,
         nationalityCode: p.nationalityCode,
         latitude: p.latitude,
         longitude: p.longitude,
@@ -321,11 +325,20 @@ function AppShell(): React.JSX.Element {
     [pins],
   );
 
+  const nextEntryNumber = useMemo(() => {
+    const highest = pins.reduce(
+      (max, pin, idx) => Math.max(max, pin.entryNumber ?? idx + 1),
+      0,
+    );
+    return Math.max(pins.length, highest) + 1;
+  }, [pins]);
+
   const handleCompleteOnboarding = async (input: OnboardingInput): Promise<void> => {
     const nextProfile: UserProfile = {
       id: 'local-profile',
       displayName: input.displayName,
       homeCountry: input.homeCountry,
+      datingPreference: input.datingPreference ?? 'everyone',
       syncPhotos: false,
       vaultEnabled: Boolean(input.vaultPassphrase),
       onboardingCompleted: true,
@@ -529,6 +542,7 @@ function AppShell(): React.JSX.Element {
                   id: 'local-profile',
                   displayName: session?.user?.email?.split('@')[0] || 'Explorer',
                   homeCountry: 'US',
+                  datingPreference: 'everyone',
                   syncPhotos: false,
                   vaultEnabled: vaultSettings.hasPassphraseLock,
                   onboardingCompleted: true,
@@ -776,6 +790,8 @@ function AppShell(): React.JSX.Element {
         open={editorOpen}
         initialPin={editingPin}
         droppedCoordinate={droppedCoord}
+        nextEntryNumber={nextEntryNumber}
+        datingPreference={profile?.datingPreference ?? 'everyone'}
         onClose={() => {
           setEditorOpen(false);
           setEditingPin(null);
