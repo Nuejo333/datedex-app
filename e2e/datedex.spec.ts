@@ -76,9 +76,11 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await page.getByRole('button', { name: 'Rizz AI' }).click();
     await expect(page.getByText('Strictly 0 free messages')).toBeVisible();
 
-    // 7. Map IMapProvider tap-to-drop coordinates
+    // 7. Map DatedexMap container & interactive controls (works with or without Mapbox token)
     await page.getByRole('button', { name: 'Map' }).click();
-    await expect(page.getByText('IMapProvider Canvas')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Toggle drop pin mode' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Search this area' })).toBeVisible();
 
     // 8. Spreadsheet Import tab renders starter template button
     await page.getByRole('button', { name: 'Import' }).click();
