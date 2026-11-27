@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe('HudStatsBar', () => {
-  it('renders the Settings button next to Discreet and Hide HUD and invokes onOpenSettings', async () => {
+  it('renders the Settings button next to Discreet without any Hide HUD button and invokes onOpenSettings', async () => {
     const user = userEvent.setup();
     const onOpenSettings = vi.fn();
 
@@ -32,13 +32,13 @@ describe('HudStatsBar', () => {
         isSignedIn={false}
         signedInEmail={null}
         onToggleDiscreet={vi.fn()}
-        onToggleHideHud={vi.fn()}
         onOpenSettings={onOpenSettings}
       />,
     );
 
     const settingsBtn = screen.getByRole('button', { name: 'Account & Settings' });
     expect(settingsBtn).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hide HUD' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('settings-signed-in-indicator')).not.toBeInTheDocument();
 
     await user.click(settingsBtn);
@@ -54,7 +54,6 @@ describe('HudStatsBar', () => {
         isSignedIn={true}
         signedInEmail="alex@example.com"
         onToggleDiscreet={vi.fn()}
-        onToggleHideHud={vi.fn()}
         onOpenSettings={vi.fn()}
       />,
     );

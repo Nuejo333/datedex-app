@@ -94,6 +94,8 @@ function buildMockSession(userId: string, email: string, identities: UserIdentit
 
 describe('App onboarding gating, sign-out cleanup & full-page Settings integration', () => {
   beforeEach(async () => {
+    // Force tokenless monochrome fallback in jsdom (no WebGL context available in Vitest)
+    vi.stubEnv('VITE_MAPBOX_ACCESS_TOKEN', '');
     localStorage.clear();
     sessionStorage.clear();
     await localPinRepository.clearUserData();
@@ -107,6 +109,7 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     cleanup();
     await localPinRepository.clearUserData();
     localStorage.clear();
@@ -157,9 +160,16 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
 
     render(<App />);
 
-    // Signed-in date is initially visible (no onboarding shown because user-1 already onboarded)
+    // App opens on Map tab by default with signed-in pin visible and no Hide HUD button
+    expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('button', { name: 'Hide HUD' })).not.toBeInTheDocument();
     expect(await screen.findByText(/Secret Date Sofia/)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
+
+    // Switch to Pokédex before opening Settings to verify Sign Out resets activeTab to Map
+    await user.click(screen.getByRole('button', { name: 'Pokédex' }));
+    expect(screen.getByRole('button', { name: 'Pokédex' })).toHaveAttribute('aria-current', 'page');
 
     // Open full-page Settings view from top header gear button
     await user.click(screen.getByRole('button', { name: 'Account & Settings (Signed in)' }));
@@ -175,9 +185,11 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     });
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
-    // Returning Back to main shell shows empty signed-out app (zero dates, zero onboarding)
+    // Returning Back to main shell shows empty signed-out app on the default Map tab
     await user.click(screen.getByRole('button', { name: 'Back to previous view' }));
     expect(await screen.findByTestId('hud-dates')).toHaveTextContent('0');
+    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
     expect(screen.queryByText(/Secret Date Sofia/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
@@ -185,7 +197,7 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     expect(await localPinRepository.getProfile()).toBeNull();
   });
 
-  it('triggers onboarding only once for a first-time authenticated user and not on subsequent sign-in', async () => {
+  it('triggers onboarding only once for a first-time authenticated user and defaults to Map after onboarding and sign-in', async () => {
     const user = userEvent.setup();
     const googleIdentity = {
       identity_id: 'id-google-new',
@@ -195,10 +207,12 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
       identity_data: { email: 'newuser@example.com' },
     } as UserIdentity;
 
-    // Start signed out: onboarding must NOT open
+    // Start signed out: opens directly on Map tab, onboarding must NOT open
     mocks.activeSession = null;
     render(<App />);
     expect(await screen.findByTestId('hud-dates')).toHaveTextContent('0');
+    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
     // First-time sign-in triggers onboarding
@@ -210,7 +224,7 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
 
     expect(await screen.findByRole('heading', { name: 'Welcome to Datédex' })).toBeInTheDocument();
 
-    // Complete 4-step onboarding
+    // Complete 4-step onboarding -> lands directly on Map tab
     await user.type(screen.getByLabelText('Passport Nickname'), 'Taylor');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('checkbox'));
@@ -221,7 +235,9 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
       expect(screen.getByTestId('hud-dates')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
     });
+    expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
 
     expect(localStorage.getItem(getUserOnboardingStorageKey('first-time-user'))).toBe('true');
     expect(mocks.syncProfileToCloud).toHaveBeenCalledWith(
@@ -243,7 +259,7 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
     });
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
 
-    // Signing back in as the same user does NOT re-trigger onboarding
+    // Signing back in as the same user does NOT re-trigger onboarding and returns to Map tab
     await act(async () => {
       mocks.authListener?.('SIGNED_IN', newSession);
     });
@@ -252,5 +268,9 @@ describe('App onboarding gating, sign-out cleanup & full-page Settings integrati
       expect(screen.getByTestId('account-signed-in-email')).toHaveTextContent('newuser@example.com');
     });
     expect(screen.queryByRole('heading', { name: 'Welcome to Datédex' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Back to previous view' }));
+    expect(screen.getByRole('button', { name: 'Map' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('region', { name: 'Datédex Monochrome 3D Map' })).toBeInTheDocument();
   });
 });

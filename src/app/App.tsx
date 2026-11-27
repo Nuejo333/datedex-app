@@ -6,7 +6,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookHeart,
-  Eye,
   FileSpreadsheet,
   Globe2,
   Plus,
@@ -65,7 +64,7 @@ import { AffiliateSlot } from '../features/monetization/AffiliateSlot';
 import { InterstitialAdDialog } from '../features/monetization/InterstitialAdDialog';
 import { OnboardingFlow } from '../features/onboarding/OnboardingFlow';
 import { PinEditorDialog } from '../features/pins/PinEditorDialog';
-import { HudStatsBar, RestoreHudPill } from '../features/pokedex/HudStatsBar';
+import { HudStatsBar } from '../features/pokedex/HudStatsBar';
 import { PokedexDashboard } from '../features/pokedex/PokedexDashboard';
 import { RizzCoachPanel } from '../features/rizz-coach/RizzCoachPanel';
 import { SpreadsheetPanel } from '../features/spreadsheet/SpreadsheetPanel';
@@ -85,7 +84,7 @@ export function App(): React.JSX.Element {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [pins, setPins] = useState<DecryptedPin[]>([]);
   const [vaultSettings, setVaultSettings] = useState<VaultSettings>(DEFAULT_VAULT_SETTINGS);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('pokedex');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('map');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPin, setEditingPin] = useState<DecryptedPin | null>(null);
   const [droppedCoord, setDroppedCoord] = useState<MapCoordinate | null>(null);
@@ -151,7 +150,7 @@ export function App(): React.JSX.Element {
     setUnlockOpen(false);
     setInterstitialOpen(false);
     setMapAreaBounds(null);
-    setActiveTab('pokedex');
+    setActiveTab('map');
 
     // Wipe local IndexedDB tables, in-memory crypto keys, and user-specific storage caches
     await clearClientUserSessionData(localPinRepository);
@@ -171,6 +170,7 @@ export function App(): React.JSX.Element {
         setEditingPin(null);
         setEditorOpen(false);
         setMapAreaBounds(null);
+        setActiveTab('map');
       }
 
       const [sub, identities, cloudProfile] = await Promise.all([
@@ -240,26 +240,41 @@ export function App(): React.JSX.Element {
     }
 
     const init = async (): Promise<void> => {
-      const [authState, activeOffers] = await Promise.all([
-        getActiveSession(),
-        fetchActiveAffiliateOffers(),
-      ]);
-      if (!mounted) return;
-      setSession(authState.session);
-      setAffiliates(activeOffers);
+      // Load public affiliate offers asynchronously so slow/offline networks never block local-first boot
+      void fetchActiveAffiliateOffers()
+        .then((activeOffers) => {
+          if (mounted) {
+            setAffiliates(activeOffers);
+          }
+        })
+        .catch(() => {
+          // Offline or transient network error; leave affiliates empty
+        });
 
-      if (authState.user) {
-        await hydrateAuthenticatedUser(authState.user, isMounted);
-      } else {
-        // If a previous cloud session expired/signed out while the app was closed, wipe its cache;
-        // preserve local IndexedDB untouched for 100% offline-only users (lastUserId === null).
-        if (getLastAuthenticatedUserId() !== null) {
-          await clearClientUserSessionData(localPinRepository);
+      try {
+        const authState = await getActiveSession();
+        if (!mounted) return;
+        setSession(authState.session);
+
+        if (authState.user) {
+          await hydrateAuthenticatedUser(authState.user, isMounted);
+        } else {
+          // If a previous cloud session expired/signed out while the app was closed, wipe its cache;
+          // preserve local IndexedDB untouched for 100% offline-only users (lastUserId === null).
+          if (getLastAuthenticatedUserId() !== null) {
+            await clearClientUserSessionData(localPinRepository);
+          }
+          await refreshLocalState();
         }
-        await refreshLocalState();
-      }
-      if (mounted) {
-        setLoading(false);
+      } catch {
+        // Fallback to local-first IndexedDB state if session hydration throws offline
+        if (mounted) {
+          await refreshLocalState().catch(() => {});
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     void init();
@@ -283,6 +298,9 @@ export function App(): React.JSX.Element {
       }
 
       setSession(nextSession);
+      if (event === 'SIGNED_IN') {
+        setActiveTab('map');
+      }
       void hydrateAuthenticatedUser(nextSession.user, isMounted);
     });
 
@@ -337,6 +355,7 @@ export function App(): React.JSX.Element {
     setProfile(nextProfile);
     setNeedsOnboarding(false);
     setSettingsOpen(false);
+    setActiveTab('map');
     if (session?.user) {
       markUserOnboardingCompletedLocally(session.user.id);
       await syncProfileToCloud(session.user.id, nextProfile);
@@ -530,20 +549,15 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="min-h-dvh bg-[#0b0d14] text-slate-100">
-      {!vaultSettings.hideHud ? (
-        <HudStatsBar
-          stats={hudStats}
-          discreetMode={vaultSettings.discreetMode}
-          isPro={isPro}
-          isSignedIn={Boolean(session?.user)}
-          signedInEmail={session?.user?.email ?? null}
-          onToggleDiscreet={handleToggleDiscreet}
-          onToggleHideHud={() => void updateVault({ hideHud: true })}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
-      ) : (
-        <RestoreHudPill onRestore={() => void updateVault({ hideHud: false })} />
-      )}
+      <HudStatsBar
+        stats={hudStats}
+        discreetMode={vaultSettings.discreetMode}
+        isPro={isPro}
+        isSignedIn={Boolean(session?.user)}
+        signedInEmail={session?.user?.email ?? null}
+        onToggleDiscreet={handleToggleDiscreet}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <main className="mx-auto max-w-2xl space-y-4 px-4 pt-4 pb-28">
         <AdBannerSlot
@@ -596,8 +610,6 @@ export function App(): React.JSX.Element {
                 selectedPinId={editingPin?.id ?? null}
                 draftCoordinate={droppedCoord}
                 discreetMode={vaultSettings.discreetMode}
-                hideHud={vaultSettings.hideHud}
-                hideDock={vaultSettings.hideDock}
                 isAreaFiltered={Boolean(mapAreaBounds)}
                 viewport={viewport}
                 onViewportChange={setViewport}
@@ -628,7 +640,7 @@ export function App(): React.JSX.Element {
                 }}
               />
             </Suspense>
-            {mapAreaBounds && !vaultSettings.hideHud && (
+            {mapAreaBounds && (
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-xs text-neutral-300">
                 <span>Showing pins within searched map area</span>
                 <button
@@ -691,8 +703,6 @@ export function App(): React.JSX.Element {
             signedInEmail={session?.user?.email ?? null}
             syncPhotos={profile?.syncPhotos ?? false}
             onToggleDiscreet={handleToggleDiscreet}
-            onToggleHideHud={() => void updateVault({ hideHud: !vaultSettings.hideHud })}
-            onToggleHideDock={() => void updateVault({ hideDock: !vaultSettings.hideDock })}
             onToggleSyncPhotos={async (next) => {
               const baseProfile: UserProfile = profile ?? {
                 id: 'local-profile',
@@ -747,50 +757,39 @@ export function App(): React.JSX.Element {
           setDroppedCoord(null);
           setEditorOpen(true);
         }}
-        className={`fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105 ${vaultSettings.hideDock ? 'bottom-5' : 'bottom-20'
-          }`}
+        className="fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
 
-      {/* One-handed Bottom Navigation Dock */}
-      {!vaultSettings.hideDock ? (
-        <nav
-          aria-label="Primary Navigation"
-          className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0d14]/95 px-2 pt-2 backdrop-blur-md"
-        >
-          <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveTab(item.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition ${isActive
+      {/* Permanently Visible Bottom Navigation Dock */}
+      <nav
+        aria-label="Primary Navigation"
+        className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0b0d14]/95 px-2 pt-2 backdrop-blur-md"
+      >
+        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition ${
+                  isActive
                     ? 'bg-rose-500/15 text-rose-300'
                     : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void updateVault({ hideDock: false })}
-          className="fixed bottom-5 left-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#121622]/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur"
-        >
-          <Eye className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
-          Show Dock
-        </button>
-      )}
+                }`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       <PinEditorDialog
         open={editorOpen}

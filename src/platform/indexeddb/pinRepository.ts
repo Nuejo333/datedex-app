@@ -26,8 +26,6 @@ import { webCryptoService } from '../crypto/webCryptoService';
  */
 export const DEFAULT_VAULT_SETTINGS: VaultSettings = {
   discreetMode: false,
-  hideHud: false,
-  hideDock: false,
   hasPassphraseLock: false,
   passphraseHash: null,
   passphraseSalt: null,
@@ -258,7 +256,7 @@ export class LocalPinRepository {
   }
 
   /**
-   * Reads Vault / Discreet / HUD / Dock settings from Dexie.
+   * Reads Vault / Discreet settings from Dexie.
    * @returns {Promise<VaultSettings>} Stored or default Vault settings.
    */
   async getVaultSettings(): Promise<VaultSettings> {
@@ -268,7 +266,7 @@ export class LocalPinRepository {
   }
 
   /**
-   * Persists updated Vault / HUD / Dock settings to Dexie.
+   * Persists updated Vault / Discreet settings to Dexie.
    * @param {VaultSettings} settings - Updated Vault settings.
    * @returns {Promise<VaultSettings>} Validated saved settings.
    */

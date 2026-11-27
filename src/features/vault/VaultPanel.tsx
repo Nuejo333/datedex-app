@@ -1,6 +1,6 @@
 /**
  * @module features/vault/VaultPanel
- * Privacy, Vault / Discreet controls, HUD/Dock visibility toggles,
+ * Privacy, Vault / Discreet controls,
  * offline browser-data-loss notice, Encrypted JSON Backup export/restore,
  * and optional passwordless Supabase Auth (Google OAuth + Magic Link ONLY).
  */
@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   Cloud,
   Download,
-  EyeOff,
   Lock,
   LogOut,
   Mail,
@@ -28,8 +27,6 @@ export interface VaultPanelProps {
   signedInEmail: string | null;
   syncPhotos: boolean;
   onToggleDiscreet: () => void;
-  onToggleHideHud: () => void;
-  onToggleHideDock: () => void;
   onToggleSyncPhotos: (next: boolean) => Promise<void>;
   onSetPassphrase: (passphrase: string) => Promise<void>;
   onExportBackup: (passphrase: string) => Promise<string>;
@@ -51,8 +48,6 @@ export function VaultPanel({
   signedInEmail,
   syncPhotos,
   onToggleDiscreet,
-  onToggleHideHud,
-  onToggleHideDock,
   onToggleSyncPhotos,
   onSetPassphrase,
   onExportBackup,
@@ -130,14 +125,14 @@ export function VaultPanel({
 
   return (
     <div className="space-y-4">
-      {/* Discreet & One-Handed Toggles */}
+      {/* Discreet & Vault Lock Controls */}
       <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-white">Vault & One-Handed Controls</h2>
+          <h2 className="text-sm font-bold text-white">Vault & Discreet Controls</h2>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2">
           <button
             type="button"
             onClick={onToggleDiscreet}
@@ -150,37 +145,6 @@ export function VaultPanel({
           >
             <span>Vault / Discreet</span>
             <span>{vaultSettings.discreetMode ? 'ON' : 'OFF'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleHideHud}
-            aria-pressed={vaultSettings.hideHud}
-            className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
-              vaultSettings.hideHud
-                ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
-                : 'border-white/10 bg-slate-900/60 text-slate-200'
-            }`}
-          >
-            <span className="inline-flex items-center gap-1">
-              <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-              Hide HUD
-            </span>
-            <span>{vaultSettings.hideHud ? 'HIDDEN' : 'VISIBLE'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleHideDock}
-            aria-pressed={vaultSettings.hideDock}
-            className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
-              vaultSettings.hideDock
-                ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
-                : 'border-white/10 bg-slate-900/60 text-slate-200'
-            }`}
-          >
-            <span>Hide Dock</span>
-            <span>{vaultSettings.hideDock ? 'HIDDEN' : 'VISIBLE'}</span>
           </button>
         </div>
 

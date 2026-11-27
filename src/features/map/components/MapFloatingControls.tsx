@@ -2,7 +2,7 @@
  * @module features/map/components/MapFloatingControls
  * Monochrome floating map overlays: bottom-center "Search this area" white pill
  * and bottom-right stacked `#111111` controls (3D buildings toggle, zoom +/- pill,
- * and geolocation / recenter-to-globe trigger), respecting Vault Hide HUD and mobile safe areas.
+ * and geolocation / recenter-to-globe trigger) positioned above the permanent bottom dock.
  */
 import { Box, Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
 
@@ -10,10 +10,6 @@ import { Box, Globe2, LocateFixed, Minus, Plus } from 'lucide-react';
  * Props for `MapFloatingControls`.
  */
 export interface MapFloatingControlsProps {
-  /** When `true`, hides all floating map HUD controls immediately. */
-  hideHud: boolean;
-  /** Whether the mobile bottom navigation dock is hidden (adjusts bottom clearance). */
-  hideDock: boolean;
   /** Whether the 3D buildings `fill-extrusion` layer and auto-tilt are active. */
   show3DBuildings: boolean;
   /** Whether an area bounds filter is currently active. */
@@ -34,13 +30,11 @@ export interface MapFloatingControlsProps {
 
 /**
  * Renders Datédex monochrome floating map controls with safe-area bottom clearance
- * above the mobile dock and instant suppression when Hide HUD is active.
+ * above the permanently visible mobile bottom dock.
  * @param {MapFloatingControlsProps} props - Control states and map action callbacks.
- * @returns {React.JSX.Element | null} Floating controls overlay or `null` when HUD is hidden.
+ * @returns {React.JSX.Element} Floating controls overlay.
  */
 export function MapFloatingControls({
-  hideHud,
-  hideDock,
   show3DBuildings,
   isAreaFiltered = false,
   isZoomedIn,
@@ -49,19 +43,10 @@ export function MapFloatingControls({
   onZoomIn,
   onZoomOut,
   onLocateOrRecenter,
-}: MapFloatingControlsProps): React.JSX.Element | null {
-  if (hideHud) {
-    return null;
-  }
-
+}: MapFloatingControlsProps): React.JSX.Element {
   // Safe-area clearance ensures controls never collide with the mobile bottom dock or iOS home indicator
-  const centerBottomClass = hideDock
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)]'
-    : 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]';
-
-  const rightStackBottomClass = hideDock
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)]'
-    : 'bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)]';
+  const centerBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]';
+  const rightStackBottomClass = 'bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)]';
 
   return (
     <div

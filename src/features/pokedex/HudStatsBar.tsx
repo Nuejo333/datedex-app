@@ -1,9 +1,9 @@
 /**
  * @module features/pokedex/HudStatsBar
  * Sticky top HUD displaying Dates, Countries, Avg Rating, Dates2Bed conversion ratio,
- * and quick one-handed Vault / Discreet & Hide HUD controls.
+ * and quick one-handed Vault / Discreet & Settings controls.
  */
-import { Eye, EyeOff, Settings, Shield, ShieldOff } from 'lucide-react';
+import { Settings, Shield, ShieldOff } from 'lucide-react';
 import type { HudStats } from '../../domain/analytics/pokedexStats';
 import { formatHudDates2Bed } from '../../domain/vault/masking';
 
@@ -17,7 +17,6 @@ export interface HudStatsBarProps {
   isSignedIn: boolean;
   signedInEmail?: string | null;
   onToggleDiscreet: () => void;
-  onToggleHideHud: () => void;
   onOpenSettings: () => void;
 }
 
@@ -33,7 +32,6 @@ export function HudStatsBar({
   isSignedIn,
   signedInEmail,
   onToggleDiscreet,
-  onToggleHideHud,
   onOpenSettings,
 }: HudStatsBarProps): React.JSX.Element {
   return (
@@ -56,28 +54,17 @@ export function HudStatsBar({
               type="button"
               onClick={onToggleDiscreet}
               aria-pressed={discreetMode}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
-                discreetMode
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${discreetMode
                   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
                   : 'bg-white/10 text-slate-200 hover:bg-white/15'
-              }`}
+                }`}
             >
               {discreetMode ? (
                 <Shield className="h-3.5 w-3.5" aria-hidden="true" />
               ) : (
                 <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {discreetMode ? 'Vault On' : 'Discreet'}
-            </button>
-
-            <button
-              type="button"
-              onClick={onToggleHideHud}
-              aria-label="Hide HUD"
-              title="Hide HUD"
-              className="rounded-full bg-white/10 p-1.5 text-slate-300 transition hover:bg-white/15 hover:text-white"
-            >
-              <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+              {discreetMode ? 'Active' : 'Discreet'}
             </button>
 
             <button
@@ -89,11 +76,10 @@ export function HudStatsBar({
                   ? `Account & Settings (${signedInEmail ?? 'Signed in'})`
                   : 'Account & Settings'
               }
-              className={`relative rounded-full p-1.5 transition ${
-                isSignedIn
+              className={`relative rounded-full p-1.5 transition ${isSignedIn
                   ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30'
                   : 'bg-white/10 text-slate-300 hover:bg-white/15 hover:text-white'
-              }`}
+                }`}
             >
               <Settings className="h-3.5 w-3.5" aria-hidden="true" />
               {isSignedIn && (
@@ -146,23 +132,5 @@ export function HudStatsBar({
         </div>
       </div>
     </header>
-  );
-}
-
-/**
- * Floating restore pill rendered when the user hides the top HUD.
- * @param {{ onRestore: () => void }} props - Callback to restore the HUD.
- * @returns {React.JSX.Element} Floating restore button.
- */
-export function RestoreHudPill({ onRestore }: { onRestore: () => void }): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={onRestore}
-      className="fixed top-3 right-3 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#121622]/90 px-3 py-1.5 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur"
-    >
-      <Eye className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
-      Show HUD
-    </button>
   );
 }

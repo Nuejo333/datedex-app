@@ -2,7 +2,7 @@
  * @module features/map/__tests__/DatedexMap.test
  * Vitest unit and integration test suite verifying Datédex Mapbox GL v3 monochrome overrides,
  * space fog, 3D building fill-extrusion (minzoom 14), auto-pitch lifecycle (>15 -> 55°, <13.5 -> 0°),
- * "Search this area" bounds callback, Vault / Discreet masking, Hide HUD, and map.remove() cleanup.
+ * "Search this area" bounds callback, Vault / Discreet masking, and map.remove() cleanup.
  */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -425,15 +425,13 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(map.easeTo).not.toHaveBeenCalled();
   });
 
-  it('invokes onSearchBounds(map.getBounds()) when "Search this area" is clicked and respects Hide HUD', () => {
+  it('invokes onSearchBounds(map.getBounds()) when "Search this area" is clicked and keeps map controls visible', () => {
     const onSearchBounds = vi.fn();
-    const { rerender } = render(
+    render(
       <DatedexMap
         markers={SAMPLE_MARKERS}
         pins={SAMPLE_PINS}
         discreetMode={false}
-        hideHud={false}
-        hideDock={false}
         viewport={{ latitude: 48.8566, longitude: 2.3522, zoom: 12 }}
         onViewportChange={vi.fn()}
         onSelectMarker={vi.fn()}
@@ -470,24 +468,8 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
     expect(map.zoomOut).toHaveBeenCalled();
 
-    // Hide HUD suppresses both floating controls and top toolbar
-    rerender(
-      <DatedexMap
-        markers={SAMPLE_MARKERS}
-        pins={SAMPLE_PINS}
-        discreetMode={false}
-        hideHud={true}
-        hideDock={false}
-        viewport={{ latitude: 48.8566, longitude: 2.3522, zoom: 12 }}
-        onViewportChange={vi.fn()}
-        onSelectMarker={vi.fn()}
-        onMapClick={vi.fn()}
-        onSearchBounds={onSearchBounds}
-      />,
-    );
-
-    expect(screen.queryByTestId('map-floating-controls')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('map-top-toolbar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('map-floating-controls')).toBeInTheDocument();
+    expect(screen.getByTestId('map-top-toolbar')).toBeInTheDocument();
   });
 
   it('masks pin names and strips avatar photos in Vault / Discreet mode via masking.ts', () => {

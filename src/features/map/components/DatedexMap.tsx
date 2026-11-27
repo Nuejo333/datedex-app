@@ -26,15 +26,11 @@ import { MapFloatingControls } from './MapFloatingControls';
 
 /**
  * Extended props for `DatedexMap`, strictly satisfying `MapProviderProps` (`IMapProvider`)
- * while supporting Vault Hide HUD/Dock clearance, full pin masking, and area bounds search.
+ * while supporting full pin masking and area bounds search.
  */
 export interface DatedexMapProps extends MapProviderProps {
   /** Optional full decrypted pins used by `maskPinForDiscreet` for vault aliases and photo masking. */
   pins?: DecryptedPin[];
-  /** When `true`, suppresses all floating map HUD bars and controls. */
-  hideHud?: boolean;
-  /** When `true`, adjusts safe-area bottom offsets because the mobile bottom dock is hidden. */
-  hideDock?: boolean;
   /** Visual indicator that a "Search this area" bounds filter is active. */
   isAreaFiltered?: boolean;
   /** Invoked by the bottom-center "Search this area" pill with `map.getBounds()`. */
@@ -301,8 +297,6 @@ export function DatedexMap({
   selectedPinId = null,
   draftCoordinate = null,
   discreetMode,
-  hideHud = false,
-  hideDock = false,
   isAreaFiltered = false,
   viewport,
   onViewportChange,
@@ -773,12 +767,11 @@ export function DatedexMap({
       aria-label="Datédex Monochrome 3D Map"
       className="relative h-[min(74dvh,640px)] min-h-[460px] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
     >
-      {/* Top 3-Way Coordinate & Search Toolbar (suppressed when Hide HUD is active) */}
-      {!hideHud && (
-        <div
-          data-testid="map-top-toolbar"
-          className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2"
-        >
+      {/* Top 3-Way Coordinate & Search Toolbar */}
+      <div
+        data-testid="map-top-toolbar"
+        className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2"
+      >
           <div className="pointer-events-auto flex items-center gap-1.5">
             {/* Place search input (Way 2 of 3-way coordinate entry) */}
             <div className="relative flex-1">
@@ -912,8 +905,7 @@ export function DatedexMap({
               Tap anywhere on the map to place a connection pin
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {/* Mapbox GL JS v3 Canvas OR Graceful Monochrome Fallback when Token Missing */}
       {hasMapboxToken ? (
@@ -991,8 +983,6 @@ export function DatedexMap({
 
       {/* Floating Bottom-Center & Bottom-Right Monochrome Controls */}
       <MapFloatingControls
-        hideHud={hideHud}
-        hideDock={hideDock}
         show3DBuildings={show3DBuildings}
         isAreaFiltered={isAreaFiltered}
         isZoomedIn={liveZoom >= 4}

@@ -33,26 +33,30 @@ export async function fetchActiveAffiliateOffers(
     query = query.eq('placement', placement);
   }
 
-  const { data, error } = await query;
-  if (error || !data) return [];
+  try {
+    const { data, error } = await query;
+    if (error || !data) return [];
 
-  const offers: AffiliateOffer[] = [];
-  for (const row of data) {
-    const parsed = AffiliateOfferSchema.safeParse({
-      id: row.id,
-      title: row.title,
-      subtitle: row.subtitle,
-      ctaLabel: row.cta_label,
-      targetUrl: row.target_url,
-      badge: row.badge,
-      placement: row.placement,
-      priority: row.priority,
-    });
-    if (parsed.success) {
-      offers.push(parsed.data);
+    const offers: AffiliateOffer[] = [];
+    for (const row of data) {
+      const parsed = AffiliateOfferSchema.safeParse({
+        id: row.id,
+        title: row.title,
+        subtitle: row.subtitle,
+        ctaLabel: row.cta_label,
+        targetUrl: row.target_url,
+        badge: row.badge,
+        placement: row.placement,
+        priority: row.priority,
+      });
+      if (parsed.success) {
+        offers.push(parsed.data);
+      }
     }
+    return offers;
+  } catch {
+    return [];
   }
-  return offers;
 }
 
 /**

@@ -50,19 +50,17 @@ export const OnboardingInputSchema = z.object({
 export type OnboardingInput = z.infer<typeof OnboardingInputSchema>;
 
 /**
- * Local UI discreet & one-handed HUD/Dock toggle settings.
+ * Local UI discreet & Vault lock settings.
  */
 export const VaultSettingsSchema = z.object({
   discreetMode: z.boolean().default(false),
-  hideHud: z.boolean().default(false),
-  hideDock: z.boolean().default(false),
   hasPassphraseLock: z.boolean().default(false),
   passphraseHash: z.string().nullable().default(null),
   passphraseSalt: z.string().nullable().default(null),
 });
 
 /**
- * Vault & HUD/Dock UI state.
+ * Vault & Discreet UI state.
  */
 export type VaultSettings = z.infer<typeof VaultSettingsSchema>;
 
