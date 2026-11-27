@@ -1,10 +1,11 @@
 # HANDOFF.md
 
-## Current State (Branch: `feat/datedex-rebuild`)
-- Complete rebuild of **Datédex** inside `datedex-app/` (`datedex-admin/` untouched and empty).
+## Current State (Branch: `main`)
+- Complete rebuild of **Datédex** inside `datedex-app/` (`datedex-admin/` untouched and empty), merged into `main`.
 - Implemented full domain layer (`src/domain/`), local-first AES-GCM + Dexie persistence (`src/platform/`), passwordless Supabase auth/sync/storage, Canvas EXIF stripping, Vercel serverless endpoints (`api/`), isolated React 19 UI features (`src/features/`), native `<dialog>` accessibility, CI workflow (`.github/workflows/ci.yml`), `vercel.json`, and `supabase/migrations/001_init.sql`.
 - Replaced `PlaceholderMapAdapter.tsx` with the production monochrome 3D-to-2D-to-3D Mapbox GL JS v3+ module (`src/features/map/utils/monochromeStyle.ts`, `src/features/map/components/DatedexMap.tsx`, `src/features/map/components/MapFloatingControls.tsx`, and `src/features/map/__tests__/DatedexMap.test.tsx`), wired into `src/app/App.tsx`.
-- Verified via `npm run ci` (`typecheck`, `lint`, `check:boundaries`, `vitest`, `check:secrets`, `vite build`) and `npm run test:e2e` (mobile viewport Playwright suite updated for `DatedexMap`).
+- Added top-bar Account & Settings gear button (`src/features/pokedex/HudStatsBar.tsx`) with signed-in indicator and accessible native `<dialog>` auth modal (`src/features/vault/AccountSettingsDialog.tsx`) reusing the existing Supabase Google OAuth, Email Magic Link OTP, and Sign Out handlers in `src/app/App.tsx`.
+- Verified via `npm run ci` (`typecheck`, `lint`, `check:boundaries`, 33/33 `vitest` unit tests, `check:secrets`, `vite build`).
 
 ## Pending Founder-Gated Actions (Section 6 of `AGENTS.md`)
 1. **Database Migration (Gate #3):** Review and apply `supabase/migrations/001_init.sql` to the live Supabase project, and verify Google OAuth + Email Magic Link redirect URLs.

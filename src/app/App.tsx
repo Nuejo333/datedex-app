@@ -57,6 +57,7 @@ import { HudStatsBar, RestoreHudPill } from '../features/pokedex/HudStatsBar';
 import { PokedexDashboard } from '../features/pokedex/PokedexDashboard';
 import { RizzCoachPanel } from '../features/rizz-coach/RizzCoachPanel';
 import { SpreadsheetPanel } from '../features/spreadsheet/SpreadsheetPanel';
+import { AccountSettingsDialog } from '../features/vault/AccountSettingsDialog';
 import { VaultLockDialog } from '../features/vault/VaultLockDialog';
 import { VaultPanel } from '../features/vault/VaultPanel';
 
@@ -77,6 +78,7 @@ export function App(): React.JSX.Element {
   const [editingPin, setEditingPin] = useState<DecryptedPin | null>(null);
   const [droppedCoord, setDroppedCoord] = useState<MapCoordinate | null>(null);
   const [unlockOpen, setUnlockOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [interstitialOpen, setInterstitialOpen] = useState(false);
   const [viewport, setViewport] = useState<MapViewport>({ latitude: 20, longitude: 0, zoom: 1.8 });
   const [mapAreaBounds, setMapAreaBounds] = useState<{
@@ -312,6 +314,12 @@ export function App(): React.JSX.Element {
     return requestRizzCoachStrategies(session.access_token, req);
   };
 
+  const handleSignOut = async (): Promise<void> => {
+    await signOutCloud();
+    setSession(null);
+    setSubscription(null);
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center text-sm text-slate-400">
@@ -346,8 +354,11 @@ export function App(): React.JSX.Element {
           stats={hudStats}
           discreetMode={vaultSettings.discreetMode}
           isPro={isPro}
+          isSignedIn={Boolean(session?.user)}
+          signedInEmail={session?.user?.email ?? null}
           onToggleDiscreet={handleToggleDiscreet}
           onToggleHideHud={() => void updateVault({ hideHud: true })}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       ) : (
         <RestoreHudPill onRestore={() => void updateVault({ hideHud: false })} />
@@ -392,12 +403,12 @@ export function App(): React.JSX.Element {
                 markers={
                   mapAreaBounds
                     ? mapMarkers.filter(
-                        (m) =>
-                          m.latitude >= mapAreaBounds.south &&
-                          m.latitude <= mapAreaBounds.north &&
-                          m.longitude >= mapAreaBounds.west &&
-                          m.longitude <= mapAreaBounds.east,
-                      )
+                      (m) =>
+                        m.latitude >= mapAreaBounds.south &&
+                        m.latitude <= mapAreaBounds.north &&
+                        m.longitude >= mapAreaBounds.west &&
+                        m.longitude <= mapAreaBounds.east,
+                    )
                     : mapMarkers
                 }
                 pins={pins}
@@ -531,11 +542,7 @@ export function App(): React.JSX.Element {
               await refreshLocalState();
               return `Synced ${res.pushed} uploaded, ${res.pulled} cloud entries.`;
             }}
-            onSignOut={async () => {
-              await signOutCloud();
-              setSession(null);
-              setSubscription(null);
-            }}
+            onSignOut={handleSignOut}
           />
         )}
       </main>
@@ -549,9 +556,8 @@ export function App(): React.JSX.Element {
           setDroppedCoord(null);
           setEditorOpen(true);
         }}
-        className={`fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105 ${
-          vaultSettings.hideDock ? 'bottom-5' : 'bottom-20'
-        }`}
+        className={`fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105 ${vaultSettings.hideDock ? 'bottom-5' : 'bottom-20'
+          }`}
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
@@ -572,11 +578,10 @@ export function App(): React.JSX.Element {
                   type="button"
                   onClick={() => setActiveTab(item.id)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition ${
-                    isActive
-                      ? 'bg-rose-500/15 text-rose-300'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                  className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition ${isActive
+                    ? 'bg-rose-500/15 text-rose-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                    }`}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
                   <span>{item.label}</span>
@@ -613,6 +618,17 @@ export function App(): React.JSX.Element {
         open={unlockOpen}
         onClose={() => setUnlockOpen(false)}
         onVerifyPassphrase={handleVerifyUnlock}
+      />
+
+      <AccountSettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        supabaseConfigured={supabaseConfigured}
+        signedInEmail={session?.user?.email ?? null}
+        isPro={isPro}
+        onGoogleSignIn={signInWithGoogle}
+        onSendMagicLink={sendMagicLink}
+        onSignOut={handleSignOut}
       />
 
       <InterstitialAdDialog

@@ -3,7 +3,7 @@
  * Sticky top HUD displaying Dates, Countries, Avg Rating, Dates2Bed conversion ratio,
  * and quick one-handed Vault / Discreet & Hide HUD controls.
  */
-import { Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
+import { Eye, EyeOff, Settings, Shield, ShieldOff } from 'lucide-react';
 import type { HudStats } from '../../domain/analytics/pokedexStats';
 import { formatHudDates2Bed } from '../../domain/vault/masking';
 
@@ -14,8 +14,11 @@ export interface HudStatsBarProps {
   stats: HudStats;
   discreetMode: boolean;
   isPro: boolean;
+  isSignedIn: boolean;
+  signedInEmail?: string | null;
   onToggleDiscreet: () => void;
   onToggleHideHud: () => void;
+  onOpenSettings: () => void;
 }
 
 /**
@@ -27,8 +30,11 @@ export function HudStatsBar({
   stats,
   discreetMode,
   isPro,
+  isSignedIn,
+  signedInEmail,
   onToggleDiscreet,
   onToggleHideHud,
+  onOpenSettings,
 }: HudStatsBarProps): React.JSX.Element {
   return (
     <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/90 px-4 pt-3 pb-3 backdrop-blur-md">
@@ -69,9 +75,34 @@ export function HudStatsBar({
               onClick={onToggleHideHud}
               aria-label="Hide HUD"
               title="Hide HUD"
-              className="rounded-full bg-white/10 p-1.5 text-slate-300 hover:bg-white/15 hover:text-white"
+              className="rounded-full bg-white/10 p-1.5 text-slate-300 transition hover:bg-white/15 hover:text-white"
             >
               <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              aria-label={isSignedIn ? 'Account & Settings (Signed in)' : 'Account & Settings'}
+              title={
+                isSignedIn
+                  ? `Account & Settings (${signedInEmail ?? 'Signed in'})`
+                  : 'Account & Settings'
+              }
+              className={`relative rounded-full p-1.5 transition ${
+                isSignedIn
+                  ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30'
+                  : 'bg-white/10 text-slate-300 hover:bg-white/15 hover:text-white'
+              }`}
+            >
+              <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+              {isSignedIn && (
+                <span
+                  data-testid="settings-signed-in-indicator"
+                  aria-hidden="true"
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-[#0b0d14]"
+                />
+              )}
             </button>
           </div>
         </div>
