@@ -1,7 +1,7 @@
 /**
  * @module domain/analytics/pokedexStats
- * Pure calculators for Pokédex HUD metrics, world coverage, top nationalities,
- * rating distribution, achievement badges, and pin search/filtering.
+ * Pure calculators for Pokédex HUD metrics (official 0–10 rating scale), world coverage,
+ * top nationalities, achievement badges, and pin search/filtering.
  */
 import type { DecryptedPin, MetChannel, RelationshipStatus } from '../models/pin';
 import { COUNTRY_BY_CODE, TOTAL_UN_COUNTRIES, getCountryFlag } from '../countries/countries';
@@ -9,7 +9,7 @@ import { matchesPinCityFilter } from '../filters/pinCityFilters';
 import { comparePinsChronologically } from './chronology';
 
 /**
- * Top HUD bar summary statistics.
+ * Top HUD bar summary statistics (using the official 0–10 rating scale).
  */
 export interface HudStats {
   totalDates: number;
@@ -28,7 +28,7 @@ export interface WorldCoverageStats {
 }
 
 /**
- * Ranked nationality frequency entry.
+ * Ranked nationality frequency entry (average score on the official 0–10 scale).
  */
 export interface NationalityRank {
   code: string;
@@ -36,15 +36,6 @@ export interface NationalityRank {
   flag: string;
   count: number;
   avgRating: number;
-}
-
-/**
- * Rating bucket count for 1-5 star distribution chart.
- */
-export interface RatingBucket {
-  star: 1 | 2 | 3 | 4 | 5;
-  count: number;
-  percentage: number;
 }
 
 /**
@@ -75,9 +66,25 @@ export interface PokedexFilter {
 }
 
 /**
- * Computes top HUD metrics (`Dates`, `Countries`, `Avg Rating`, `Dates2Bed`).
+ * Resolves a connection's official `0–10` score, preferring explicit `generalVote`
+ * and seamlessly converting legacy `1–5` ratings (`rating * 2`).
+ * @param {Pick<DecryptedPin, 'generalVote' | 'rating'>} pin - Pin rating fields.
+ * @returns {number} Official score clamped to `0.0–10.0`.
+ */
+export function getPinTenScaleScore(
+  pin: Pick<DecryptedPin, 'generalVote' | 'rating'>,
+): number {
+  if (typeof pin.generalVote === 'number' && Number.isFinite(pin.generalVote)) {
+    return Number(Math.min(10, Math.max(0, pin.generalVote)).toFixed(1));
+  }
+  const clampedFive = Math.min(5, Math.max(1, pin.rating));
+  return Number((clampedFive * 2).toFixed(1));
+}
+
+/**
+ * Computes top HUD metrics (`Dates`, `Countries`, `Avg /10`, `Dates2Bed`).
  * @param {DecryptedPin[]} pins - Active decrypted pins.
- * @returns {HudStats} Calculated HUD statistics.
+ * @returns {HudStats} Calculated HUD statistics on the official 0–10 rating scale.
  */
 export function computeHudStats(pins: readonly DecryptedPin[]): HudStats {
   const active = pins.filter((pin) => !pin.deletedAt);
@@ -91,7 +98,7 @@ export function computeHudStats(pins: readonly DecryptedPin[]): HudStats {
   }
 
   const countries = new Set(active.map((pin) => pin.nationalityCode));
-  const ratingSum = active.reduce((acc, pin) => acc + pin.rating, 0);
+  const ratingSum = active.reduce((acc, pin) => acc + getPinTenScaleScore(pin), 0);
   const bedCount = active.filter(
     (pin) =>
       pin.intimacyLevel === 'third_base' ||
@@ -126,7 +133,7 @@ export function computeWorldCoverage(pins: readonly DecryptedPin[]): WorldCovera
 }
 
 /**
- * Ranks nationalities by frequency and average rating.
+ * Ranks nationalities by frequency and average 0–10 score.
  * @param {DecryptedPin[]} pins - Active decrypted pins.
  * @param {number} [limit] - Maximum nationalities to return.
  * @returns {NationalityRank[]} Sorted nationality leaderboard.
@@ -141,7 +148,7 @@ export function computeTopNationalities(
   for (const pin of active) {
     const current = grouped.get(pin.nationalityCode) ?? { count: 0, ratingSum: 0 };
     current.count += 1;
-    current.ratingSum += pin.rating;
+    current.ratingSum += getPinTenScaleScore(pin);
     grouped.set(pin.nationalityCode, current);
   }
 
@@ -158,29 +165,7 @@ export function computeTopNationalities(
 }
 
 /**
- * Computes 1-to-5 star rating histogram buckets.
- * @param {DecryptedPin[]} pins - Active decrypted pins.
- * @returns {RatingBucket[]} Ordered buckets from 5 stars down to 1 star.
- */
-export function computeRatingDistribution(pins: readonly DecryptedPin[]): RatingBucket[] {
-  const active = pins.filter((pin) => !pin.deletedAt);
-  const counts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-
-  for (const pin of active) {
-    const rounded = Math.min(5, Math.max(1, Math.round(pin.rating))) as 1 | 2 | 3 | 4 | 5;
-    counts[rounded] += 1;
-  }
-
-  const stars: Array<1 | 2 | 3 | 4 | 5> = [5, 4, 3, 2, 1];
-  return stars.map((star) => ({
-    star,
-    count: counts[star],
-    percentage: active.length > 0 ? Math.round((counts[star] / active.length) * 100) : 0,
-  }));
-}
-
-/**
- * Evaluates Pokédex milestone achievement badges.
+ * Evaluates Pokédex milestone achievement badges using the official 0–10 rating scale.
  * @param {DecryptedPin[]} pins - Active decrypted pins.
  * @returns {AchievementBadge[]} List of achievement badges with unlock state.
  */
@@ -188,7 +173,7 @@ export function computeBadges(pins: readonly DecryptedPin[]): AchievementBadge[]
   const active = pins.filter((pin) => !pin.deletedAt);
   const countries = new Set(active.map((pin) => pin.nationalityCode)).size;
   const cities = new Set(active.map((pin) => pin.city.trim().toLowerCase())).size;
-  const fiveStarCount = active.filter((pin) => pin.rating >= 4.5).length;
+  const highScoreCount = active.filter((pin) => getPinTenScaleScore(pin) >= 9.0).length;
   const irlCount = active.filter(
     (pin) =>
       pin.metChannel === 'IRL' ||
@@ -221,9 +206,9 @@ export function computeBadges(pins: readonly DecryptedPin[]): AchievementBadge[]
     {
       id: 'chemistry',
       title: 'Electric Chemistry',
-      description: 'Record 3 entries rated 4.5+ stars',
-      unlocked: fiveStarCount >= 3,
-      progressText: `${Math.min(fiveStarCount, 3)}/3`,
+      description: 'Record 3 entries rated 9.0+ / 10',
+      unlocked: highScoreCount >= 3,
+      progressText: `${Math.min(highScoreCount, 3)}/3`,
     },
     {
       id: 'irl-charm',
@@ -258,7 +243,7 @@ export function filterPins(
     if (filter.channel !== 'all' && pin.metChannel !== filter.channel) {
       return false;
     }
-    if (pin.rating < filter.minRating) {
+    if (getPinTenScaleScore(pin) < filter.minRating) {
       return false;
     }
     if (
@@ -281,7 +266,12 @@ export function filterPins(
 
   return filtered.sort((a, b) => {
     if (filter.sortBy === 'chronological') return comparePinsChronologically(a, b);
-    if (filter.sortBy === 'rating') return b.rating - a.rating || b.dateMet.localeCompare(a.dateMet);
+    if (filter.sortBy === 'rating') {
+      return (
+        getPinTenScaleScore(b) - getPinTenScaleScore(a) ||
+        b.dateMet.localeCompare(a.dateMet)
+      );
+    }
     if (filter.sortBy === 'name') return a.name.localeCompare(b.name);
     return b.dateMet.localeCompare(a.dateMet) || b.updatedAt.localeCompare(a.updatedAt);
   });

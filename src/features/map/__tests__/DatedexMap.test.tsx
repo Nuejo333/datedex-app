@@ -190,7 +190,12 @@ vi.mock('mapbox-gl', () => {
   };
 });
 
-import { DatedexMap, extractPinInitials } from '../components/DatedexMap';
+import {
+  DatedexMap,
+  clusterMapMarkers,
+  extractPinInitials,
+  spiderfyCoLocatedPins,
+} from '../components/DatedexMap';
 
 const SAMPLE_PINS: DecryptedPin[] = [
   {
@@ -696,5 +701,90 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).toBeInTheDocument();
     expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).toBeInTheDocument();
     expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).toBeInTheDocument();
+  });
+
+  it('disaggregates co-located pins into a circular ring at max zoom so every overlapping pin is clickable', () => {
+    const olbiaLat = 40.9236;
+    const olbiaLng = 9.4964;
+    const coLocatedMarkers: MapMarker[] = [
+      {
+        id: 'olbia-1',
+        label: 'Sofia Rossi',
+        city: 'Olbia',
+        birthCity: 'Olbia',
+        nationalityCode: 'IT',
+        latitude: olbiaLat,
+        longitude: olbiaLng,
+        rating: 4.5,
+        isVaultLocked: false,
+      },
+      {
+        id: 'olbia-2',
+        label: 'Chiara Serra',
+        city: 'Olbia',
+        birthCity: 'Olbia',
+        nationalityCode: 'IT',
+        latitude: olbiaLat,
+        longitude: olbiaLng,
+        rating: 4.5,
+        isVaultLocked: false,
+      },
+      {
+        id: 'olbia-3',
+        label: 'Giulia Mura',
+        city: 'Olbia',
+        birthCity: 'Olbia',
+        nationalityCode: 'IT',
+        latitude: olbiaLat,
+        longitude: olbiaLng,
+        rating: 5,
+        isVaultLocked: false,
+      },
+    ];
+
+    // Below zoom 15 they cluster into 1 cluster pin
+    const lowZoom = clusterMapMarkers(coLocatedMarkers, 10);
+    expect(lowZoom).toHaveLength(1);
+    expect(lowZoom[0]?.type).toBe('cluster');
+
+    // At max zoom (16), spiderfy spreads them into 3 distinct points in a circle around Olbia
+    const spiderfied = spiderfyCoLocatedPins(coLocatedMarkers, 16);
+    expect(spiderfied).toHaveLength(3);
+    expect(spiderfied.every((item) => item.isSpiderfied)).toBe(true);
+
+    // Every spiderfied point is offset away from the center and distinct from every other pin
+    const cosLat = Math.cos((olbiaLat * Math.PI) / 180);
+    const radii = spiderfied.map((item) =>
+      Math.hypot(item.latitude - olbiaLat, (item.longitude - olbiaLng) * cosLat),
+    );
+    expect(radii[0]).toBeGreaterThan(0.0002);
+    expect(radii[0]).toBeCloseTo(radii[1]!, 5);
+    expect(radii[1]).toBeCloseTo(radii[2]!, 5);
+
+    const uniqueCoords = new Set(spiderfied.map((p) => `${p.latitude},${p.longitude}`));
+    expect(uniqueCoords.size).toBe(3);
+
+    // Clicking each spiderfied marker in the rendered map invokes onSelectMarker for its own ID
+    const onSelectMarker = vi.fn();
+    render(
+      <DatedexMap
+        markers={coLocatedMarkers}
+        discreetMode={false}
+        viewport={{ latitude: olbiaLat, longitude: olbiaLng, zoom: 16 }}
+        onViewportChange={vi.fn()}
+        onSelectMarker={onSelectMarker}
+        onMapClick={vi.fn()}
+      />,
+    );
+
+    for (const marker of coLocatedMarkers) {
+      const btn = screen.getByTestId(`map-pin-${marker.id}`);
+      expect(btn).toHaveAttribute('data-spiderfied', 'true');
+      fireEvent.click(btn);
+    }
+    expect(onSelectMarker).toHaveBeenCalledTimes(3);
+    expect(onSelectMarker).toHaveBeenNthCalledWith(1, 'olbia-1');
+    expect(onSelectMarker).toHaveBeenNthCalledWith(2, 'olbia-2');
+    expect(onSelectMarker).toHaveBeenNthCalledWith(3, 'olbia-3');
   });
 });

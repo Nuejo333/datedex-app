@@ -6,14 +6,14 @@
  * (`All Cities`, `Born in`, `Lives in`, `Met in`).
  */
 import { useMemo, useState } from 'react';
-import { Award, Calendar, Flame, Globe, Lock, MapPin, Search, Star, X } from 'lucide-react';
+import { Award, Calendar, Flame, Globe, Lock, MapPin, Search, X } from 'lucide-react';
 import { assignChronologicalNumbers } from '../../domain/analytics/chronology';
 import {
   computeBadges,
-  computeRatingDistribution,
   computeTopNationalities,
   computeWorldCoverage,
   filterPins,
+  getPinTenScaleScore,
   type PokedexFilter,
 } from '../../domain/analytics/pokedexStats';
 import { COUNTRY_BY_CODE, getCountryFlag } from '../../domain/countries/countries';
@@ -28,7 +28,6 @@ import {
   MetChannelSchema,
   RelationshipStatusSchema,
   formatCompactBadgeDate,
-  formatTenScale,
   type DecryptedPin,
   type MetChannel,
   type RelationshipStatus,
@@ -108,7 +107,7 @@ export function PokedexDashboard({
     nationalityCode: 'ALL',
     status: 'all',
     channel: 'all',
-    minRating: 1,
+    minRating: 0,
     sortBy: 'chronological',
   });
 
@@ -117,7 +116,6 @@ export function PokedexDashboard({
 
   const coverage = useMemo(() => computeWorldCoverage(numberedPins), [numberedPins]);
   const topNationalities = useMemo(() => computeTopNationalities(numberedPins, 5), [numberedPins]);
-  const ratingBuckets = useMemo(() => computeRatingDistribution(numberedPins), [numberedPins]);
   const badges = useMemo(() => computeBadges(numberedPins), [numberedPins]);
 
   const cityOptions = useMemo(
@@ -187,7 +185,7 @@ export function PokedexDashboard({
                     {nat.flag} {nat.name}
                   </span>
                   <span className="font-mono text-slate-400">
-                    {nat.count} • {nat.avgRating.toFixed(1)}★
+                    {nat.count} • {nat.avgRating.toFixed(1)} / 10
                   </span>
                 </li>
               ))}
@@ -196,55 +194,32 @@ export function PokedexDashboard({
         </div>
       </section>
 
-      {/* Rating Distribution & Badges */}
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
-          <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
-            <Star className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-            {t('pokedex.ratingDistribution')}
-          </h2>
-          <div className="space-y-1.5">
-            {ratingBuckets.map((bucket) => (
-              <div key={bucket.star} className="flex items-center gap-2 text-xs">
-                <span className="w-8 font-mono text-amber-300">{bucket.star}★</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400"
-                    style={{ width: `${bucket.percentage}%` }}
-                  />
-                </div>
-                <span className="w-7 text-right font-mono text-slate-400">{bucket.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
-          <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
-            <Award className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-            {t('pokedex.achievementBadges')}
-          </h2>
-          <div className="flex flex-wrap gap-1.5">
-            {badges.map((badge) => {
-              const badgeKeys = BADGE_TRANSLATION_KEYS[badge.id];
-              const badgeTitle = badgeKeys ? t(badgeKeys.title) : badge.title;
-              const badgeDesc = badgeKeys ? t(badgeKeys.desc) : badge.description;
-              return (
-                <span
-                  key={badge.id}
-                  title={badgeDesc}
-                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
-                    badge.unlocked
-                      ? 'border-amber-400/40 bg-amber-400/15 text-amber-200'
-                      : 'border-white/10 bg-slate-900/60 text-slate-400'
-                  }`}
-                >
-                  {badge.unlocked ? '★ ' : ''}
-                  {badgeTitle} ({badge.progressText})
-                </span>
-              );
-            })}
-          </div>
+      {/* Achievement Badges (0–10 is the sole official rating scale; 1–5 star distribution removed) */}
+      <section className="rounded-2xl border border-white/10 bg-[#121622] p-4">
+        <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
+          <Award className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+          {t('pokedex.achievementBadges')}
+        </h2>
+        <div className="flex flex-wrap gap-1.5">
+          {badges.map((badge) => {
+            const badgeKeys = BADGE_TRANSLATION_KEYS[badge.id];
+            const badgeTitle = badgeKeys ? t(badgeKeys.title) : badge.title;
+            const badgeDesc = badgeKeys ? t(badgeKeys.desc) : badge.description;
+            return (
+              <span
+                key={badge.id}
+                title={badgeDesc}
+                className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
+                  badge.unlocked
+                    ? 'border-amber-400/40 bg-amber-400/15 text-amber-200'
+                    : 'border-white/10 bg-slate-900/60 text-slate-400'
+                }`}
+              >
+                {badge.unlocked ? '✓ ' : ''}
+                {badgeTitle} ({badge.progressText})
+              </span>
+            );
+          })}
         </div>
       </section>
 
@@ -450,7 +425,7 @@ export function PokedexDashboard({
                       </span>
                     </span>
                     <span className="shrink-0 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-300">
-                      {formatTenScale(pin.rating)}
+                      {getPinTenScaleScore(pin).toFixed(1)} / 10
                     </span>
                   </div>
 

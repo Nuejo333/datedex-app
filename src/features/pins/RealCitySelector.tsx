@@ -177,7 +177,7 @@ export function RealCitySelector({
           <optgroup key={group.code} label={group.groupLabel}>
             {group.cities.map((entry) => (
               <option key={`${entry.city}-${entry.countryCode}`} value={entry.city}>
-                {entry.city}
+                {entry.region ? `${entry.city} — ${entry.region}` : entry.city}
               </option>
             ))}
           </optgroup>

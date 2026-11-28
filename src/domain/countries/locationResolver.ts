@@ -39,6 +39,7 @@ export interface PinLocationResolutionInput {
  */
 export interface ResolvedPinLocation {
   city: string;
+  region?: string | null;
   latitude: number;
   longitude: number;
   nationalityCode: string;
@@ -126,6 +127,7 @@ export function resolvePinLocation(input: PinLocationResolutionInput): ResolvedP
     if (geocoded) {
       return {
         city: geocoded.city,
+        region: geocoded.region ?? null,
         latitude: geocoded.latitude,
         longitude: geocoded.longitude,
         nationalityCode: primaryCountry?.code ?? normalizedRoots[0] ?? geocoded.countryCode,

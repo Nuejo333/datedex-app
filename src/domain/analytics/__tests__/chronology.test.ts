@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assignChronologicalNumbers,
+  computeAutoFirstIntimateDate,
   getChronologicalAnchorDate,
   previewChronologicalEntryNumber,
   type ChronologicalEntryLike,
@@ -79,5 +80,16 @@ describe('chronology ordering & dynamic profile numbering', () => {
         dateMet: '2026-01-10',
       }),
     ).toBe(1);
+  });
+
+  it('computes deterministic First Intimate Date offsets from dateMet and Dates2Bed', () => {
+    expect(computeAutoFirstIntimateDate('2026-10-10', '0')).toBe('2026-10-10');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '1')).toBe('2026-10-10');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '2')).toBe('2026-10-11');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '3')).toBe('2026-10-12');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '4')).toBe('2026-10-13');
+    expect(computeAutoFirstIntimateDate('2026-10-30', '3')).toBe('2026-11-01');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '5+')).toBe('2026-10-14');
+    expect(computeAutoFirstIntimateDate('2026-10-10', '')).toBe('2026-10-10');
   });
 });

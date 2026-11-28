@@ -69,7 +69,7 @@ export const en = {
   'header.signedInFallback': 'Signed in',
   'hud.dates': 'Dates',
   'hud.countries': 'Countries',
-  'hud.avgRating': 'Avg ★',
+  'hud.avgRating': 'Avg /10',
   'hud.dates2Bed': 'Dates2Bed',
 
   // Monetization / Sponsored Banner / Interstitial / Affiliates
@@ -115,7 +115,6 @@ export const en = {
   'pokedex.coverageStampedPlural': 'Stamped {count} sovereign countries.',
   'pokedex.topNationalities': 'Top Nationalities',
   'pokedex.noEntriesYet': 'No entries logged yet.',
-  'pokedex.ratingDistribution': 'Rating Distribution',
   'pokedex.achievementBadges': 'Achievement Badges',
   'pokedex.searchAria': 'Search Pokédex entries',
   'pokedex.searchPlaceholder': 'Search name, city, country, channel, or notes...',
@@ -128,7 +127,7 @@ export const en = {
   'pokedex.sortAria': 'Sort entries',
   'pokedex.sortChronological': 'Sort: Chronological (#1→N)',
   'pokedex.sortRecent': 'Sort: Recent',
-  'pokedex.sortRating': 'Sort: Highest ★',
+  'pokedex.sortRating': 'Sort: Highest /10',
   'pokedex.sortName': 'Sort: Name A–Z',
   'pokedex.card.encounterDate': 'First Date',
   'pokedex.card.intimacyDate': 'Intimacy',
@@ -159,7 +158,7 @@ export const en = {
   'pokedex.badge.jetsetter.title': 'City Hopper',
   'pokedex.badge.jetsetter.desc': 'Log pins in 5 distinct cities',
   'pokedex.badge.chemistry.title': 'Electric Chemistry',
-  'pokedex.badge.chemistry.desc': 'Record 3 entries rated 4.5+ stars',
+  'pokedex.badge.chemistry.desc': 'Record 3 entries rated 9.0+ / 10',
   'pokedex.badge.irl-charm.title': 'Real-World Charmer',
   'pokedex.badge.irl-charm.desc': 'Meet 2 connections IRL off-app',
 
@@ -601,7 +600,7 @@ export const it: TranslationDictionary = {
   'header.signedInFallback': 'Connesso',
   'hud.dates': 'Incontri',
   'hud.countries': 'Paesi',
-  'hud.avgRating': 'Media ★',
+  'hud.avgRating': 'Media /10',
   'hud.dates2Bed': 'Dates2Bed',
 
   // Monetization / Sponsored Banner / Interstitial / Affiliates
@@ -647,7 +646,6 @@ export const it: TranslationDictionary = {
   'pokedex.coverageStampedPlural': 'Timbrati {count} paesi sovrani.',
   'pokedex.topNationalities': 'Nazionalità Principali',
   'pokedex.noEntriesYet': 'Nessuna voce registrata ancora.',
-  'pokedex.ratingDistribution': 'Distribuzione Valutazioni',
   'pokedex.achievementBadges': 'Obiettivi e Badge',
   'pokedex.searchAria': 'Cerca voci nel Pokédex',
   'pokedex.searchPlaceholder': 'Cerca nome, città, paese, canale o note...',
@@ -660,7 +658,7 @@ export const it: TranslationDictionary = {
   'pokedex.sortAria': 'Ordina voci',
   'pokedex.sortChronological': 'Ordine: Cronologico (#1→N)',
   'pokedex.sortRecent': 'Ordine: Recenti',
-  'pokedex.sortRating': 'Ordine: Voto ★ più alto',
+  'pokedex.sortRating': 'Ordine: Voto /10',
   'pokedex.sortName': 'Ordine: Nome A–Z',
   'pokedex.card.encounterDate': 'Primo Incontro',
   'pokedex.card.intimacyDate': 'Intimità',
@@ -691,7 +689,7 @@ export const it: TranslationDictionary = {
   'pokedex.badge.jetsetter.title': 'Esploratore Urbano',
   'pokedex.badge.jetsetter.desc': 'Registra pin in 5 città diverse',
   'pokedex.badge.chemistry.title': 'Chimica Elettrica',
-  'pokedex.badge.chemistry.desc': 'Registra 3 voci con voto 4.5+ stelle',
+  'pokedex.badge.chemistry.desc': 'Registra 3 voci con voto 9.0+ / 10',
   'pokedex.badge.irl-charm.title': 'Fascino Dal Vivo',
   'pokedex.badge.irl-charm.desc': 'Incontra 2 persone dal vivo fuori dalle app',
 
@@ -1125,7 +1123,7 @@ export const es: TranslationDictionary = {
   'header.signedInFallback': 'Sesión iniciada',
   'hud.dates': 'Citas',
   'hud.countries': 'Países',
-  'hud.avgRating': 'Media ★',
+  'hud.avgRating': 'Media /10',
   'hud.dates2Bed': 'Dates2Bed',
 
   // Monetization / Sponsored Banner / Interstitial / Affiliates
@@ -1171,7 +1169,6 @@ export const es: TranslationDictionary = {
   'pokedex.coverageStampedPlural': 'Sellados {count} países soberanos.',
   'pokedex.topNationalities': 'Nacionalidades Principales',
   'pokedex.noEntriesYet': 'Aún no hay registros.',
-  'pokedex.ratingDistribution': 'Distribución de Valoraciones',
   'pokedex.achievementBadges': 'Logros e Insignias',
   'pokedex.searchAria': 'Buscar registros en el Pokédex',
   'pokedex.searchPlaceholder': 'Buscar nombre, ciudad, país, canal o notas...',
@@ -1184,7 +1181,7 @@ export const es: TranslationDictionary = {
   'pokedex.sortAria': 'Ordenar registros',
   'pokedex.sortChronological': 'Orden: Cronológico (#1→N)',
   'pokedex.sortRecent': 'Orden: Recientes',
-  'pokedex.sortRating': 'Orden: Mayor ★',
+  'pokedex.sortRating': 'Orden: Mayor /10',
   'pokedex.sortName': 'Orden: Nombre A–Z',
   'pokedex.card.encounterDate': 'Primera Cita',
   'pokedex.card.intimacyDate': 'Intimidad',
@@ -1215,7 +1212,7 @@ export const es: TranslationDictionary = {
   'pokedex.badge.jetsetter.title': 'Viajero Urbano',
   'pokedex.badge.jetsetter.desc': 'Registra pines en 5 ciudades distintas',
   'pokedex.badge.chemistry.title': 'Química Eléctrica',
-  'pokedex.badge.chemistry.desc': 'Registra 3 entradas con 4.5+ estrellas',
+  'pokedex.badge.chemistry.desc': 'Registra 3 entradas con 9.0+ / 10',
   'pokedex.badge.irl-charm.title': 'Encanto En Persona',
   'pokedex.badge.irl-charm.desc': 'Conoce a 2 conexiones en persona fuera de apps',
 

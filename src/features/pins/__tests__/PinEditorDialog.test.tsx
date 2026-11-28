@@ -222,7 +222,7 @@ describe('PinEditorDialog', () => {
     // Birth City selector populates real Japanese cities and defaults to Tokyo capital fallback
     const birthCitySelect = screen.getByLabelText('City Where They Were Born');
     expect(within(birthCitySelect).getByRole('option', { name: 'Tokyo' })).toBeInTheDocument();
-    expect(within(birthCitySelect).getByRole('option', { name: 'Kyoto' })).toBeInTheDocument();
+    expect(within(birthCitySelect).getByRole('option', { name: 'Kyoto — Kansai' })).toBeInTheDocument();
     expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('Tokyo');
     expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('35.6762');
 
@@ -235,7 +235,7 @@ describe('PinEditorDialog', () => {
     await user.selectOptions(screen.getByLabelText('City Where They Live'), 'London');
     await user.selectOptions(screen.getByLabelText('City Where We Met'), 'Paris');
     const hookupCitySelect = screen.getByLabelText('Hookup City');
-    expect(within(hookupCitySelect).getByRole('option', { name: 'Kyoto' })).toBeInTheDocument();
+    expect(within(hookupCitySelect).getByRole('option', { name: /Kyoto/ })).toBeInTheDocument();
     await user.selectOptions(hookupCitySelect, 'Paris');
 
     // Footer shows Save #4 for new entry
@@ -365,5 +365,70 @@ describe('PinEditorDialog', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
     expect(onSave.mock.calls[0]?.[1]).toBeNull();
+  });
+
+  it('supports smaller Italian towns (Olbia, Cannigione) and auto-populates First Intimate Date for Sex + Dates2Bed while permitting manual override', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <LanguageProvider initialLocale="en">
+        <PinEditorDialog
+          open
+          initialPin={null}
+          droppedCoordinate={null}
+          nextEntryNumber={3}
+          onClose={vi.fn()}
+          onSave={onSave}
+        />
+      </LanguageProvider>,
+    );
+
+    await user.type(screen.getByLabelText('Name *'), 'Giulia');
+
+    // Main Roots defaults to IT: Olbia & Cannigione appear with Sardinia region and resolve real coordinates
+    const birthCitySelect = screen.getByLabelText('City Where They Were Born');
+    expect(within(birthCitySelect).getByRole('option', { name: 'Olbia — Sardinia' })).toBeInTheDocument();
+    expect(
+      within(birthCitySelect).getByRole('option', { name: 'Cannigione — Sardinia' }),
+    ).toBeInTheDocument();
+
+    await user.selectOptions(birthCitySelect, 'Cannigione');
+    expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('Cannigione');
+    expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('41.1086');
+
+    await user.selectOptions(screen.getByLabelText('Hookup City'), 'Olbia');
+
+    // Set Date We Met = 2026-08-10 and Dates2Bed = '3' (+2 days)
+    const dateMetInput = screen.getByLabelText('Date We Met (First Date) *');
+    fireEvent.change(dateMetInput, { target: { value: '2026-08-10' } });
+    await user.selectOptions(screen.getByLabelText('Dates2Bed (Dates to Intimacy)'), '3');
+
+    // Selecting Intimacy Level = Sex automatically populates First Intimate Date -> 2026-08-12 and updates badge
+    await user.selectOptions(screen.getByLabelText('Intimacy Level'), 'sex');
+    const firstIntimateInput = screen.getByLabelText('First Intimate Date') as HTMLInputElement;
+    expect(firstIntimateInput.value).toBe('2026-08-12');
+    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#3 - 12/08/26');
+
+    // Manual edit overrides the auto-populated date and is NOT overwritten if dateMet changes afterward
+    fireEvent.change(firstIntimateInput, { target: { value: '2026-08-25' } });
+    expect(firstIntimateInput.value).toBe('2026-08-25');
+    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#3 - 25/08/26');
+
+    fireEvent.change(dateMetInput, { target: { value: '2026-08-09' } });
+    expect(firstIntimateInput.value).toBe('2026-08-25');
+
+    await user.click(screen.getByRole('button', { name: 'Save #3' }));
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+    expect(onSave.mock.calls[0]?.[0]).toMatchObject({
+      birthCity: 'Cannigione',
+      city: 'Cannigione',
+      hookupCity: 'Olbia',
+      intimacyLevel: 'sex',
+      datesToBed: '3',
+      firstIntimateDate: '2026-08-25',
+    });
   });
 });

@@ -57,6 +57,14 @@ export interface SingleMapClusterItem {
   marker: MapMarker;
   latitude: number;
   longitude: number;
+  /** Original co-located center latitude when spiderfied into a radial ring at max zoom. */
+  originLatitude?: number;
+  /** Original co-located center longitude when spiderfied into a radial ring at max zoom. */
+  originLongitude?: number;
+  /** True when two or more co-located pins are fanned out in a circular ring. */
+  isSpiderfied?: boolean;
+  /** Screen-space pixel offset for spiderfied pins in the tokenless fallback canvas. */
+  spiderfyOffsetPx?: { x: number; y: number };
 }
 
 /**
@@ -84,6 +92,9 @@ interface MountedMarkerHandle {
 const DEFAULT_GLOBE_CENTER: [number, number] = [0, 20];
 const CLUSTER_DISABLE_ZOOM = 15;
 const CLUSTER_EXPANSION_MAX_ZOOM = 16;
+const SPIDERFY_CO_LOCATED_THRESHOLD_DEG = 0.0008;
+const SPIDERFY_LINES_SOURCE_ID = 'datedex-spiderfy-lines';
+const SPIDERFY_LINES_LAYER_ID = 'datedex-spiderfy-lines-layer';
 
 /**
  * Extracts 1- or 2-letter uppercase initials from a person's name:
@@ -160,21 +171,114 @@ export function getClusterThresholdDegrees(zoom: number): number {
 }
 
 /**
+ * Disaggregates co-located pins (sharing the same city/coordinates) into a clean,
+ * evenly spaced circular ring around their shared center once the map reaches high/max zoom,
+ * ensuring every overlapping pin is individually visible and tappable.
+ * @param {MapMarker[]} markers - Active markers to position.
+ * @param {number} zoom - Current map zoom level (`>= CLUSTER_DISABLE_ZOOM`).
+ * @returns {SingleMapClusterItem[]} Standalone and circularly spiderfied pin items.
+ */
+export function spiderfyCoLocatedPins(
+  markers: MapMarker[],
+  zoom: number,
+): SingleMapClusterItem[] {
+  const groups: Array<{ markers: MapMarker[]; sumLat: number; sumLng: number }> = [];
+
+  for (const marker of markers) {
+    let matched: { markers: MapMarker[]; sumLat: number; sumLng: number } | null = null;
+    for (const group of groups) {
+      const centerLat = group.sumLat / group.markers.length;
+      const centerLng = group.sumLng / group.markers.length;
+      if (
+        Math.hypot(marker.latitude - centerLat, marker.longitude - centerLng) <=
+        SPIDERFY_CO_LOCATED_THRESHOLD_DEG
+      ) {
+        matched = group;
+        break;
+      }
+    }
+    if (matched) {
+      matched.markers.push(marker);
+      matched.sumLat += marker.latitude;
+      matched.sumLng += marker.longitude;
+    } else {
+      groups.push({
+        markers: [marker],
+        sumLat: marker.latitude,
+        sumLng: marker.longitude,
+      });
+    }
+  }
+
+  const clampedZoom = Math.max(CLUSTER_DISABLE_ZOOM, Math.min(20, zoom));
+  const degPerPixel = 360 / (512 * Math.pow(2, clampedZoom));
+  const results: SingleMapClusterItem[] = [];
+
+  for (const group of groups) {
+    const first = group.markers[0];
+    if (group.markers.length === 1 && first) {
+      results.push({
+        type: 'pin',
+        id: first.id,
+        marker: first,
+        latitude: first.latitude,
+        longitude: first.longitude,
+        isSpiderfied: false,
+      });
+      continue;
+    }
+
+    const centerLat = group.sumLat / group.markers.length;
+    const centerLng = group.sumLng / group.markers.length;
+    const screenRadiusPx = Math.min(72, 38 + group.markers.length * 5);
+    const latRadiusDeg = degPerPixel * screenRadiusPx;
+    const cosLat = Math.max(0.2, Math.cos((centerLat * Math.PI) / 180));
+
+    group.markers.forEach((marker, idx) => {
+      const angle = -Math.PI / 2 + (2 * Math.PI * idx) / group.markers.length;
+      const offsetLat = Math.sin(angle) * latRadiusDeg;
+      const offsetLng = (Math.cos(angle) * latRadiusDeg) / cosLat;
+      results.push({
+        type: 'pin',
+        id: marker.id,
+        marker,
+        latitude: Number((centerLat + offsetLat).toFixed(6)),
+        longitude: Number((centerLng + offsetLng).toFixed(6)),
+        originLatitude: centerLat,
+        originLongitude: centerLng,
+        isSpiderfied: true,
+        spiderfyOffsetPx: {
+          x: Math.round(Math.cos(angle) * screenRadiusPx),
+          y: Math.round(Math.sin(angle) * screenRadiusPx),
+        },
+      });
+    });
+  }
+
+  return results;
+}
+
+/**
  * Clusters spatially close or overlapping pins at lower-to-mid zoom levels (`zoom < 15`)
- * and renders standalone pins once separated.
+ * and disaggregates co-located pins into a neat circular ring once at high/max zoom (`zoom >= 15`).
  * @param {MapMarker[]} markers - Active markers to plot.
  * @param {number} zoom - Current map zoom level.
- * @returns {MapRenderItem[]} Renderable clusters and standalone pins.
+ * @returns {MapRenderItem[]} Renderable clusters and standalone/spiderfied pins.
  */
 export function clusterMapMarkers(markers: MapMarker[], zoom: number): MapRenderItem[] {
-  if (zoom >= CLUSTER_DISABLE_ZOOM || markers.length <= 1) {
+  if (markers.length <= 1) {
     return markers.map((marker) => ({
       type: 'pin',
       id: marker.id,
       marker,
       latitude: marker.latitude,
       longitude: marker.longitude,
+      isSpiderfied: false,
     }));
+  }
+
+  if (zoom >= CLUSTER_DISABLE_ZOOM) {
+    return spiderfyCoLocatedPins(markers, zoom);
   }
 
   const thresholdDeg = getClusterThresholdDegrees(zoom);
@@ -278,6 +382,7 @@ function buildPinMarkerElement(
   display: DisplayPin,
   discreetMode: boolean,
   isSelected: boolean,
+  isSpiderfied: boolean = false,
 ): HTMLButtonElement {
   const initials = discreetMode ? '' : extractPinInitials(display.displayName);
 
@@ -286,6 +391,7 @@ function buildPinMarkerElement(
   button.dataset.testid = `map-pin-${marker.id}`;
   button.dataset.pinShape = 'teardrop';
   button.dataset.masked = String(display.isMasked);
+  button.dataset.spiderfied = String(isSpiderfied);
   button.setAttribute(
     'aria-label',
     discreetMode ? `${marker.city}` : `${initials} — ${display.displayCity}`,
@@ -629,6 +735,7 @@ export function DatedexMap({
           display,
           discreetMode,
           item.marker.id === selectedPinId,
+          Boolean(item.isSpiderfied),
         );
         const onClick = (): void => {
           map.flyTo({
@@ -645,6 +752,70 @@ export function DatedexMap({
           .addTo(map);
         mountedMarkersRef.current.push({ marker: mapboxMarker, element, onClick });
       }
+    }
+
+    // Draw subtle leader spokes from the co-located city center to each spiderfied pin when supported
+    const spiderfiedFeatures = renderItems
+      .filter(
+        (item): item is SingleMapClusterItem =>
+          item.type === 'pin' &&
+          Boolean(item.isSpiderfied) &&
+          typeof item.originLatitude === 'number' &&
+          typeof item.originLongitude === 'number',
+      )
+      .map((item) => ({
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [item.originLongitude!, item.originLatitude!],
+            [item.longitude, item.latitude],
+          ],
+        },
+      }));
+
+    const syncSpiderfyLines = (): void => {
+      if (
+        typeof map.getSource !== 'function' ||
+        typeof map.addSource !== 'function' ||
+        typeof map.addLayer !== 'function'
+      ) {
+        return;
+      }
+      const featureCollection = {
+        type: 'FeatureCollection' as const,
+        features: spiderfiedFeatures,
+      };
+      const existingSource = map.getSource(SPIDERFY_LINES_SOURCE_ID) as
+        | { setData?: (data: typeof featureCollection) => void }
+        | undefined;
+      if (existingSource && typeof existingSource.setData === 'function') {
+        existingSource.setData(featureCollection);
+      } else if (spiderfiedFeatures.length > 0 && map.isStyleLoaded?.()) {
+        map.addSource(SPIDERFY_LINES_SOURCE_ID, {
+          type: 'geojson',
+          data: featureCollection,
+        });
+        if (!map.getLayer(SPIDERFY_LINES_LAYER_ID)) {
+          map.addLayer({
+            id: SPIDERFY_LINES_LAYER_ID,
+            type: 'line',
+            source: SPIDERFY_LINES_SOURCE_ID,
+            paint: {
+              'line-color': 'rgba(255, 255, 255, 0.45)',
+              'line-width': 1.5,
+              'line-dasharray': [2, 2],
+            },
+          });
+        }
+      }
+    };
+
+    try {
+      syncSpiderfyLines();
+    } catch {
+      // Ignore if map style is mid-reload
     }
 
     return () => {
@@ -854,21 +1025,33 @@ export function DatedexMap({
             const display = resolveMaskedMapPin(marker, pinLookup, discreetMode);
             const initials = discreetMode ? '' : extractPinInitials(display.displayName);
             const isSelected = marker.id === selectedPinId;
+            const spiderOffset = item.isSpiderfied ? item.spiderfyOffsetPx : undefined;
+            const anchorLeft = projectLngToPercent(item.originLongitude ?? item.longitude);
+            const anchorTop = projectLatToPercent(item.originLatitude ?? item.latitude);
             return (
               <button
                 key={marker.id}
                 type="button"
                 data-testid={`fallback-pin-${marker.id}`}
                 data-pin-shape="teardrop"
+                data-spiderfied={String(Boolean(item.isSpiderfied))}
                 aria-label={discreetMode ? `${marker.city}` : `${initials} — ${display.displayCity}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectMarker(marker.id);
                 }}
-                style={{ left: `${left}%`, top: `${top}%` }}
-                className={`group absolute inline-flex -translate-x-1/2 -translate-y-full flex-col items-center transition-transform hover:scale-105 ${
-                  isSelected ? 'z-20 scale-110' : 'z-10'
-                }`}
+                style={
+                  spiderOffset
+                    ? {
+                        left: `${anchorLeft}%`,
+                        top: `${anchorTop}%`,
+                        transform: `translate(calc(-50% + ${spiderOffset.x}px), calc(-100% + ${spiderOffset.y}px))`,
+                      }
+                    : { left: `${left}%`, top: `${top}%` }
+                }
+                className={`group absolute inline-flex flex-col items-center transition-transform hover:scale-105 ${
+                  spiderOffset ? '' : '-translate-x-1/2 -translate-y-full'
+                } ${isSelected ? 'z-20 scale-110' : 'z-10'}`}
               >
                 <span
                   className={`relative z-10 inline-flex items-center justify-center gap-1 rounded-full border-2 text-xs font-bold leading-none shadow-xl shadow-black/85 ${

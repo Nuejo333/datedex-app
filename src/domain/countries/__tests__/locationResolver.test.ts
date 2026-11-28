@@ -4,7 +4,7 @@
  * pin coordinate resolution hierarchy (birth city -> primary nationality capital -> secondary roots).
  */
 import { describe, expect, it } from 'vitest';
-import { COUNTRY_BY_CODE, searchCountries } from '../countries';
+import { COUNTRY_BY_CODE, getCitiesForCountries, searchCountries } from '../countries';
 import { resolvePinLocation } from '../locationResolver';
 
 describe('countries & locationResolver', () => {
@@ -73,5 +73,39 @@ describe('countries & locationResolver', () => {
     expect(resolved.nationalityCode).toBe('ES');
     expect(resolved.latitude).toBeCloseTo(40.4168, 3);
     expect(resolved.longitude).toBeCloseTo(-3.7038, 3);
+  });
+
+  it('resolves smaller towns such as Olbia and Cannigione with accurate coordinates and country/region context', () => {
+    const italianCities = getCitiesForCountries(['IT']);
+    const olbiaEntry = italianCities.find((c) => c.city === 'Olbia');
+    const cannigioneEntry = italianCities.find((c) => c.city === 'Cannigione');
+
+    expect(olbiaEntry).toMatchObject({
+      city: 'Olbia',
+      countryCode: 'IT',
+      region: 'Sardinia',
+    });
+    expect(cannigioneEntry).toMatchObject({
+      city: 'Cannigione',
+      countryCode: 'IT',
+      region: 'Sardinia',
+    });
+
+    const resolvedOlbia = resolvePinLocation({ birthCity: 'Olbia', nationalities: ['IT'] });
+    expect(resolvedOlbia.source).toBe('birth_city');
+    expect(resolvedOlbia.nationalityCode).toBe('IT');
+    expect(resolvedOlbia.region).toBe('Sardinia');
+    expect(resolvedOlbia.latitude).toBeCloseTo(40.9236, 3);
+    expect(resolvedOlbia.longitude).toBeCloseTo(9.4964, 3);
+
+    const resolvedCannigione = resolvePinLocation({
+      birthCity: 'Cannigione',
+      nationalities: ['IT'],
+    });
+    expect(resolvedCannigione.source).toBe('birth_city');
+    expect(resolvedCannigione.nationalityCode).toBe('IT');
+    expect(resolvedCannigione.region).toBe('Sardinia');
+    expect(resolvedCannigione.latitude).toBeCloseTo(41.1086, 3);
+    expect(resolvedCannigione.longitude).toBeCloseTo(9.4397, 3);
   });
 });

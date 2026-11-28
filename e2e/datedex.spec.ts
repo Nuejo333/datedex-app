@@ -161,11 +161,13 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // Turn Discreet mode back off -> top stats and unmasked cards reappear in chronological order with Encounter & Intimacy dates
     await page.getByRole('button', { name: 'Active' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Rating Distribution/i })).toHaveCount(0);
     const pokedexCards = page.getByTestId('pokedex-cards');
     await expect(pokedexCards).toContainText('Julia Vance');
     await expect(pokedexCards.getByRole('button').first()).toContainText('#1');
     await expect(pokedexCards.getByRole('button').first()).toContainText('Elena');
     await expect(pokedexCards.getByRole('button').first()).toContainText('First Date: 02/04/26');
+    await expect(pokedexCards.getByRole('button').first()).toContainText('/ 10');
     await expect(pokedexCards.getByRole('button').nth(1)).toContainText('#2');
     await expect(pokedexCards.getByRole('button').nth(1)).toContainText('Intimacy: 15/10/26');
 

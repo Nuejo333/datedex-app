@@ -31,7 +31,10 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { previewChronologicalEntryNumber } from '../../domain/analytics/chronology';
+import {
+  computeAutoFirstIntimateDate,
+  previewChronologicalEntryNumber,
+} from '../../domain/analytics/chronology';
 import { COUNTRIES, COUNTRY_BY_CODE } from '../../domain/countries/countries';
 import { resolvePinLocation } from '../../domain/countries/locationResolver';
 import type { MapCoordinate } from '../../domain/map/types';
@@ -162,6 +165,7 @@ export function PinEditorDialog({
   const emojiPanelId = useId();
   const savedRef = useRef(false);
   const draftPinIdRef = useRef<string>('');
+  const firstIntimateDateManualRef = useRef(false);
 
   const handleDialogClose = (): void => {
     // Clean up unsaved local media uploads if user dismissed a brand-new connection
@@ -284,6 +288,7 @@ export function PinEditorDialog({
       setIntimacyLevel(normalizeIntimacyLevelForEditor(initialPin.intimacyLevel));
       setDatesToBed(initialPin.datesToBed ?? '');
       setFirstIntimateDate(initialPin.firstIntimateDate ?? '');
+      firstIntimateDateManualRef.current = Boolean((initialPin.firstIntimateDate ?? '').trim());
       setHookupCity(initialPin.hookupCity ?? '');
       setBedVote(initialPin.bedVote ?? 7);
       setHookupLocations(initialPin.hookupLocations ?? []);
@@ -339,6 +344,7 @@ export function PinEditorDialog({
     setIntimacyLevel('none');
     setDatesToBed('');
     setFirstIntimateDate('');
+    firstIntimateDateManualRef.current = false;
     setHookupCity('');
     setBedVote(7);
     setHookupLocations([]);
@@ -1294,7 +1300,13 @@ export function PinEditorDialog({
                   type="date"
                   required
                   value={dateMet}
-                  onChange={(e) => setDateMet(e.target.value)}
+                  onChange={(e) => {
+                    const nextDateMet = e.target.value;
+                    setDateMet(nextDateMet);
+                    if (intimacyLevel === 'sex' && !firstIntimateDateManualRef.current) {
+                      setFirstIntimateDate(computeAutoFirstIntimateDate(nextDateMet, datesToBed));
+                    }
+                  }}
                   className="dd-input"
                 />
               </div>
@@ -1437,9 +1449,17 @@ export function PinEditorDialog({
                   id="pin-intimacy-level"
                   name="intimacyLevel"
                   value={intimacyLevel}
-                  onChange={(e) =>
-                    setIntimacyLevel(e.target.value as CanonicalIntimacyLevel)
-                  }
+                  onChange={(e) => {
+                    const nextLevel = e.target.value as CanonicalIntimacyLevel;
+                    setIntimacyLevel(nextLevel);
+                    if (
+                      nextLevel === 'sex' &&
+                      (!firstIntimateDate.trim() || !firstIntimateDateManualRef.current)
+                    ) {
+                      firstIntimateDateManualRef.current = false;
+                      setFirstIntimateDate(computeAutoFirstIntimateDate(dateMet, datesToBed));
+                    }
+                  }}
                   className="dd-input text-sm"
                 >
                   {CANONICAL_INTIMACY_LEVELS.map((opt) => (
@@ -1461,9 +1481,16 @@ export function PinEditorDialog({
                   id="pin-dates-to-bed"
                   name="datesToBed"
                   value={datesToBed}
-                  onChange={(e) =>
-                    setDatesToBed(e.target.value as DatesToBedOption | '')
-                  }
+                  onChange={(e) => {
+                    const nextDatesToBed = e.target.value as DatesToBedOption | '';
+                    setDatesToBed(nextDatesToBed);
+                    if (intimacyLevel === 'sex') {
+                      firstIntimateDateManualRef.current = false;
+                      setFirstIntimateDate(
+                        computeAutoFirstIntimateDate(dateMet, nextDatesToBed),
+                      );
+                    }
+                  }}
                   className="dd-input text-sm"
                 >
                   <option value="">{t('pinEditor.dates2BedUnset')}</option>
@@ -1477,7 +1504,7 @@ export function PinEditorDialog({
               </div>
             </div>
 
-            {/* First Intimate Date (syncs header chronological badge) & Hookup City */}
+            {/* First Intimate Date (auto-populated for Sex + Dates2Bed; always manually editable) & Hookup City */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label
@@ -1491,7 +1518,10 @@ export function PinEditorDialog({
                   name="firstIntimateDate"
                   type="date"
                   value={firstIntimateDate}
-                  onChange={(e) => setFirstIntimateDate(e.target.value)}
+                  onChange={(e) => {
+                    firstIntimateDateManualRef.current = true;
+                    setFirstIntimateDate(e.target.value);
+                  }}
                   className="dd-input"
                 />
               </div>

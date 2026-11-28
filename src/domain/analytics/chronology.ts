@@ -20,6 +20,50 @@ export interface ChronologicalEntryLike {
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * Deterministic day offset table used to compute a default First Intimate Date
+ * from the encounter/first date (`dateMet`) and `Dates2Bed` when Intimacy Level is `Sex`:
+ * - `'0'` (Same night) -> `+0` days
+ * - `'1'` (First date) -> `+0` days
+ * - `'2'` -> `+1` day
+ * - `'3'` -> `+2` days
+ * - `'4'` -> `+3` days
+ * - `'5+'` -> `+4` days
+ */
+const DATES_TO_BED_DAY_OFFSETS: Record<string, number> = {
+  '0': 0,
+  '1': 0,
+  '2': 1,
+  '3': 2,
+  '4': 3,
+  '5+': 4,
+};
+
+/**
+ * Computes the default First Intimate Date (`YYYY-MM-DD`) from an encounter/first date
+ * and a `Dates2Bed` selection using UTC calendar arithmetic (immune to local DST shifts).
+ * Returns an empty string when `dateMet` is not a valid `YYYY-MM-DD` date.
+ * @param {string} dateMet - Encounter / first date in `YYYY-MM-DD` format.
+ * @param {string | null | undefined} datesToBed - Selected `Dates2Bed` value (`'0'`, `'1'`, `'2'`, `'3'`, `'4'`, `'5+'`).
+ * @returns {string} Computed ISO `YYYY-MM-DD` first intimate date.
+ */
+export function computeAutoFirstIntimateDate(
+  dateMet: string,
+  datesToBed?: string | null,
+): string {
+  const clean = dateMet.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean);
+  if (!match || !match[1] || !match[2] || !match[3]) return '';
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const offsetDays = DATES_TO_BED_DAY_OFFSETS[(datesToBed ?? '').trim()] ?? 0;
+
+  const target = new Date(Date.UTC(year, month - 1, day + offsetDays));
+  return target.toISOString().slice(0, 10);
+}
+
+/**
  * Returns the chronological anchor date (`YYYY-MM-DD`) for a connection:
  * prioritizes `firstIntimateDate` when validly recorded, otherwise falls back to `dateMet`.
  * @param {Pick<ChronologicalEntryLike, 'firstIntimateDate' | 'dateMet'>} entry - Connection date fields.

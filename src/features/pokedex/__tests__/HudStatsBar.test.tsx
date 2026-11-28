@@ -11,7 +11,7 @@ import { HudStatsBar } from '../HudStatsBar';
 const SAMPLE_STATS = {
   totalDates: 12,
   countriesCount: 5,
-  avgRating: 4.4,
+  avgRating: 8.8,
   dates2BedPercent: 42,
 };
 

@@ -92,6 +92,11 @@ describe('PokedexDashboard', () => {
     expect(buttons[1]).toHaveTextContent('Elena');
     expect(screen.getByTestId('pokedex-card-dates-pin-newer')).toHaveTextContent('First Date: 02/10/26');
     expect(screen.getByTestId('pokedex-card-dates-pin-newer')).toHaveTextContent('Intimacy: 05/10/26');
+
+    // 1–5 star Rating Distribution widget is completely removed; 0–10 is the sole official scale
+    expect(screen.queryByRole('heading', { name: /Rating Distribution/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('5★')).not.toBeInTheDocument();
+    expect(buttons[0]).toHaveTextContent('/ 10');
   });
 
   it('localizes Encounter & Intimacy dates in Italian and Spanish', () => {
