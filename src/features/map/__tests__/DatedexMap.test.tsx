@@ -199,6 +199,9 @@ const SAMPLE_PINS: DecryptedPin[] = [
     age: 26,
     nationalityCode: 'DE',
     city: 'Milan',
+    birthCity: 'Milan',
+    livingCity: 'London',
+    metCity: 'Lisbon',
     latitude: 45.4642,
     longitude: 9.19,
     rating: 4.5,
@@ -222,6 +225,9 @@ const SAMPLE_PINS: DecryptedPin[] = [
     age: 25,
     nationalityCode: 'IT',
     city: 'Rome',
+    birthCity: 'Rome',
+    livingCity: 'Milan',
+    metCity: 'Madrid',
     latitude: 41.9028,
     longitude: 12.4964,
     rating: 5.0,
@@ -245,6 +251,9 @@ const SAMPLE_PINS: DecryptedPin[] = [
     age: 28,
     nationalityCode: 'FR',
     city: 'Paris',
+    birthCity: 'Lyon',
+    livingCity: 'Paris',
+    metCity: 'Lisbon',
     latitude: 48.8566,
     longitude: 2.3522,
     rating: 5.0,
@@ -268,6 +277,9 @@ const SAMPLE_MARKERS: MapMarker[] = SAMPLE_PINS.map((pin) => ({
   id: pin.id,
   label: pin.name,
   city: pin.city,
+  birthCity: pin.birthCity,
+  livingCity: pin.livingCity,
+  metCity: pin.metCity,
   nationalityCode: pin.nationalityCode,
   latitude: pin.latitude,
   longitude: pin.longitude,
@@ -635,5 +647,54 @@ describe('DatedexMap (Mapbox GL v3 Monochrome 3D-to-2D-to-3D)', () => {
     for (const marker of mountedMarkers) {
       expect(marker.remove).toHaveBeenCalled();
     }
+  });
+
+  it('filters map pins by birthCity, livingCity, and metCity and resets via Clear without adding a searchbox', () => {
+    render(
+      <DatedexMap
+        markers={SAMPLE_MARKERS}
+        pins={SAMPLE_PINS}
+        discreetMode={false}
+        viewport={{ latitude: 47, longitude: 6, zoom: 7 }}
+        onViewportChange={vi.fn()}
+        onSelectMarker={vi.fn()}
+        onMapClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).toBeInTheDocument();
+
+    const dimensionSelect = screen.getByTestId('map-city-dimension');
+    const citySelect = screen.getByTestId('map-city-value');
+
+    // Filter by Born in Lyon -> only Elena Moreau ("MV") remains
+    fireEvent.change(dimensionSelect, { target: { value: 'birthCity' } });
+    fireEvent.change(citySelect, { target: { value: 'Lyon' } });
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).toBeInTheDocument();
+
+    // Filter by Met in Madrid -> only Sofia remains
+    fireEvent.change(dimensionSelect, { target: { value: 'metCity' } });
+    fireEvent.change(citySelect, { target: { value: 'Madrid' } });
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).not.toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).not.toBeInTheDocument();
+
+    // Filter by Lives in London -> only Julia Vance remains
+    fireEvent.change(dimensionSelect, { target: { value: 'livingCity' } });
+    fireEvent.change(citySelect, { target: { value: 'London' } });
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).not.toBeInTheDocument();
+
+    // Clear resets all 3 pins
+    fireEvent.click(screen.getByTestId('map-city-filter-clear'));
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[0]!.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[1]!.id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`map-pin-${SAMPLE_PINS[2]!.id}`)).toBeInTheDocument();
   });
 });

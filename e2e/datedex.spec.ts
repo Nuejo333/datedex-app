@@ -69,14 +69,17 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // 2. Log first connection ("Julia Vance", Milan IT) using the bottom-left '+' button
     await addBtn.click();
     await expect(page.getByRole('heading', { name: 'New Connection' })).toBeVisible();
+    await expect(page.getByTestId('pin-section-2').getByRole('searchbox')).toHaveCount(0);
     await expect(page.getByTestId('zero-cloud-badge')).toContainText(
       'Stored on Device Only · Zero Cloud Upload',
     );
 
     await page.getByLabel('Name *').fill('Julia Vance');
-    await page.getByLabel('Quick Search Country Filter Bar').fill('IT');
-    await page.getByTestId('country-chip-IT').click();
-    await page.getByLabel('City Where They Were Born').fill('Milan');
+    await page.getByLabel(/Main Roots/i).selectOption('IT');
+    await page.getByLabel('City Where They Were Born').selectOption('Milan');
+    await page.getByLabel('City Where They Live').selectOption('London');
+    await page.getByLabel('Date We Met (First Date) *').fill('2026-10-10');
+    await page.getByLabel('First Intimate Date').fill('2026-10-15');
     await page.getByLabel('The Story / How It Went').fill('Brera espresso');
     await page.getByRole('button', { name: 'Save #1' }).click();
 
@@ -105,12 +108,15 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(singlePin).not.toContainText('★');
     await expect(singlePin).not.toContainText('4.5');
 
-    // 4. Add a second nearby connection ("Elena", France -> Paris capital fallback) -> clusters into 1 larger pin of 2 and zooms to expand on click
+    // 4. Add a second nearby connection ("Elena", France -> Paris capital fallback) with an OLDER date
+    //    -> live chronological badge recalculates to Save #1, clusters into 1 pin of 2, and zooms to expand
     await page.getByRole('button', { name: 'Log new connection' }).click();
     await page.getByLabel('Name *').fill('Elena');
-    await page.getByLabel('Quick Search Country Filter Bar').fill('FR');
-    await page.getByTestId('country-chip-FR').click();
-    await page.getByRole('button', { name: 'Save #2' }).click();
+    await page.getByLabel(/Main Roots/i).selectOption('FR');
+    await page.getByLabel('City Where We Met').selectOption('Madrid');
+    await page.getByLabel('Date We Met (First Date) *').fill('2026-04-02');
+    await expect(page.getByTestId('pin-chronological-badge')).toHaveText('#1 - 02/04/26');
+    await page.getByRole('button', { name: 'Save #1' }).click();
     if (await dismissInterstitial.isVisible()) {
       await dismissInterstitial.click();
     }
@@ -129,6 +135,17 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(mapRegion).toContainText('JV');
     await expect(mapRegion).toContainText('E');
 
+    // City filter on Map ("Lives in" -> London) filters Map pins down to Julia Vance ("JV") and syncs to Pokédex
+    await page.getByTestId('map-city-dimension').selectOption('livingCity');
+    await page.getByTestId('map-city-value').selectOption('London');
+    await expect(mapRegion.locator('[data-pin-shape="teardrop"]')).toHaveCount(1);
+    await expect(mapRegion).toContainText('JV');
+    await expect(mapRegion).not.toContainText('🇫🇷');
+
+    // Clear city filter on Map restores both pins
+    await page.getByTestId('map-city-filter-clear').click();
+    await expect(mapRegion.locator('[data-pin-shape="teardrop"]')).toHaveCount(2);
+
     // 5. On Map page, Discreet mode hides top statistics and map pin initials; sticky ad banner stays visible
     await page.getByRole('button', { name: 'Discreet' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toHaveCount(0);
@@ -141,10 +158,16 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await expect(page.getByTestId('sticky-top-chrome').getByTestId('ad-banner-slot')).toBeVisible();
     await expect(page.getByTestId('pokedex-cards')).not.toContainText('Julia Vance');
 
-    // Turn Discreet mode back off -> top stats and unmasked cards reappear
+    // Turn Discreet mode back off -> top stats and unmasked cards reappear in chronological order with Encounter & Intimacy dates
     await page.getByRole('button', { name: 'Active' }).click();
     await expect(page.getByTestId('hud-stats-grid')).toBeVisible();
-    await expect(page.getByTestId('pokedex-cards')).toContainText('Julia Vance');
+    const pokedexCards = page.getByTestId('pokedex-cards');
+    await expect(pokedexCards).toContainText('Julia Vance');
+    await expect(pokedexCards.getByRole('button').first()).toContainText('#1');
+    await expect(pokedexCards.getByRole('button').first()).toContainText('Elena');
+    await expect(pokedexCards.getByRole('button').first()).toContainText('First Date: 02/04/26');
+    await expect(pokedexCards.getByRole('button').nth(1)).toContainText('#2');
+    await expect(pokedexCards.getByRole('button').nth(1)).toContainText('Intimacy: 15/10/26');
 
     // 6. Settings pins Plan & Billing first (non-collapsible), supports collapsing other cards, and switches language
     await page.getByRole('button', { name: 'Account & Settings' }).click();

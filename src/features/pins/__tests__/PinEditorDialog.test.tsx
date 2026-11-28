@@ -2,9 +2,9 @@
  * @module features/pins/__tests__/PinEditorDialog.test
  * Component tests verifying the New Connection (Add / Edit Date) scrollable modal:
  * 1. Exact top-to-bottom section ordering, pronoun adaptation (`her`/`his`/`their`),
- *    and chronological badge date updates from First Intimate Date.
- * 2. Multi-nationality stack (`Main Roots` updating coordinates/city), quick country search,
- *    and pin coordinate fallback to nationality capital when birth city is omitted.
+ *    and live chronological badge/numbering recalculation when inserting older dates.
+ * 2. Section 2 has zero country search bar; Sections 2 and 4 use real-city selectors
+ *    populated for the selected country/countries with `Main Roots` -> birth city -> capital fallback.
  * 3. Conditional `"Which Friend Introduced You?"` input when `How We Met` is `Friends`.
  * 4. `Save #N` vs `Save Changes` footer labels and Private Local Media Vault storage (`saveMediaItem`).
  */
@@ -80,15 +80,30 @@ describe('PinEditorDialog', () => {
     await datedexDb.localMedia.clear();
   });
 
-  it('renders sections in exact top-to-bottom order, adapts pronouns, and syncs chronological badge from first intimate date', async () => {
+  it('renders sections in exact top-to-bottom order, adapts pronouns, and recalculates chronological #N badge dynamically for older dates', async () => {
     const user = userEvent.setup();
+    const existingPins = [
+      makeExistingPin({
+        id: '22222222-2222-4222-8222-222222222222',
+        name: 'Camille',
+        dateMet: '2026-06-10',
+        firstIntimateDate: '',
+      }),
+      makeExistingPin({
+        id: '33333333-3333-4333-8333-333333333333',
+        name: 'Elena',
+        dateMet: '2026-09-01',
+        firstIntimateDate: '2026-09-12',
+      }),
+    ];
+
     const { rerender } = render(
       <LanguageProvider initialLocale="en">
         <PinEditorDialog
           open
           initialPin={null}
           droppedCoordinate={null}
-          nextEntryNumber={11}
+          existingPins={existingPins}
           datingPreference="women"
           onClose={vi.fn()}
           onSave={vi.fn().mockResolvedValue(undefined)}
@@ -130,7 +145,7 @@ describe('PinEditorDialog', () => {
           open
           initialPin={null}
           droppedCoordinate={null}
-          nextEntryNumber={11}
+          existingPins={existingPins}
           datingPreference="men"
           onClose={vi.fn()}
           onSave={vi.fn().mockResolvedValue(undefined)}
@@ -145,7 +160,7 @@ describe('PinEditorDialog', () => {
           open
           initialPin={null}
           droppedCoordinate={null}
-          nextEntryNumber={11}
+          existingPins={existingPins}
           datingPreference="everyone"
           onClose={vi.fn()}
           onSave={vi.fn().mockResolvedValue(undefined)}
@@ -154,14 +169,18 @@ describe('PinEditorDialog', () => {
     );
     expect(screen.getByTestId('pin-editor-subtitle')).toHaveTextContent(/\btheir\b/i);
 
-    // Chronological badge tracks Date We Met initially, then switches dynamically to First Intimate Date
+    // Chronological badge recalculates dynamically:
+    // Entering an earlier past memory (2026-03-05) becomes #1 and updates Save button to Save #1
     const dateMetInput = screen.getByLabelText('Date We Met (First Date) *');
-    fireEvent.change(dateMetInput, { target: { value: '2026-11-15' } });
-    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#11 - 15/11/26');
+    fireEvent.change(dateMetInput, { target: { value: '2026-03-05' } });
+    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#1 - 05/03/26');
+    expect(screen.getByRole('button', { name: 'Save #1' })).toBeInTheDocument();
 
+    // Setting First Intimate Date between Camille (06-10) and Elena (09-12) moves badge to #2
     const firstIntimateInput = screen.getByLabelText('First Intimate Date');
-    fireEvent.change(firstIntimateInput, { target: { value: '2026-11-27' } });
-    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#11 - 27/11/26');
+    fireEvent.change(firstIntimateInput, { target: { value: '2026-07-20' } });
+    expect(screen.getByTestId('pin-chronological-badge')).toHaveTextContent('#2 - 20/07/26');
+    expect(screen.getByRole('button', { name: 'Save #2' })).toBeInTheDocument();
 
     // Interactive Appearance Emoji Picker updates Live Emoji Avatar Box
     await user.click(screen.getByTestId('appearance-emoji-trigger'));
@@ -172,7 +191,7 @@ describe('PinEditorDialog', () => {
     expect(screen.getByTestId('pin-live-avatar')).toHaveTextContent('💃');
   });
 
-  it('updates coordinates/city from Main Roots, falls back to nationality capital when birth city is missing, and persists birth/living/met cities', async () => {
+  it('removes Section 2 search bar, populates real cities for Main Roots in Sections 2 & 4, and falls back to nationality capital when birth city is unset', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
 
@@ -189,18 +208,21 @@ describe('PinEditorDialog', () => {
       </LanguageProvider>,
     );
 
+    // Section 2 must have ZERO search bar input
+    const section2 = screen.getByTestId('pin-section-2');
+    expect(within(section2).queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(within(section2).queryByTestId('country-quick-chips')).not.toBeInTheDocument();
+
     await user.type(screen.getByLabelText('Name *'), 'Aiko');
 
-    // Quick search for Japan by ISO code -> chip displays Flag + Name + Continent
-    const countrySearch = screen.getByLabelText('Quick Search Country Filter Bar');
-    await user.type(countrySearch, 'JP');
-    const japanChip = screen.getByTestId('country-chip-JP');
-    expect(japanChip).toHaveTextContent('🇯🇵');
-    expect(japanChip).toHaveTextContent('Japan');
-    expect(japanChip).toHaveTextContent('Asia');
-    await user.click(japanChip);
+    // Select Main Roots = Japan (JP)
+    const mainRoots = screen.getByLabelText(/Main Roots/i);
+    await user.selectOptions(mainRoots, 'JP');
 
-    // Selecting Main Roots (JP) without a birth city falls back to Tokyo coordinates
+    // Birth City selector populates real Japanese cities and defaults to Tokyo capital fallback
+    const birthCitySelect = screen.getByLabelText('City Where They Were Born');
+    expect(within(birthCitySelect).getByRole('option', { name: 'Tokyo' })).toBeInTheDocument();
+    expect(within(birthCitySelect).getByRole('option', { name: 'Kyoto' })).toBeInTheDocument();
     expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('Tokyo');
     expect(screen.getByTestId('pin-resolved-location')).toHaveTextContent('35.6762');
 
@@ -209,9 +231,12 @@ describe('PinEditorDialog', () => {
     const secondRoot = screen.getByLabelText('2nd Roots');
     await user.selectOptions(secondRoot, 'FR');
 
-    // Fill optional Living & Met cities while leaving Birth City blank
-    await user.type(screen.getByLabelText('City Where They Live'), 'London');
-    await user.type(screen.getByLabelText('City Where We Met'), 'Paris');
+    // Select real cities for Living City, Met City, and Section 4 Hookup City
+    await user.selectOptions(screen.getByLabelText('City Where They Live'), 'London');
+    await user.selectOptions(screen.getByLabelText('City Where We Met'), 'Paris');
+    const hookupCitySelect = screen.getByLabelText('Hookup City');
+    expect(within(hookupCitySelect).getByRole('option', { name: 'Kyoto' })).toBeInTheDocument();
+    await user.selectOptions(hookupCitySelect, 'Paris');
 
     // Footer shows Save #4 for new entry
     const saveBtn = screen.getByRole('button', { name: 'Save #4' });
@@ -231,6 +256,7 @@ describe('PinEditorDialog', () => {
       birthCity: '',
       livingCity: 'London',
       metCity: 'Paris',
+      hookupCity: 'Paris',
     });
     expect(savedPayload.latitude).toBeCloseTo(35.6762, 3);
     expect(savedPayload.longitude).toBeCloseTo(139.6503, 3);
@@ -253,23 +279,20 @@ describe('PinEditorDialog', () => {
       </LanguageProvider>,
     );
 
-    // Hidden initially when Hinge is selected
     expect(screen.queryByLabelText('Which Friend Introduced You?')).not.toBeInTheDocument();
 
-    // Appears when Friends is selected
     const howWeMet = screen.getByLabelText('How We Met');
     await user.selectOptions(howWeMet, 'Friends');
     const friendInput = screen.getByLabelText('Which Friend Introduced You?');
     expect(friendInput).toBeInTheDocument();
     await user.type(friendInput, 'Marco');
 
-    // Switching away hides it again
     await user.selectOptions(howWeMet, 'Tinder');
     expect(screen.queryByLabelText('Which Friend Introduced You?')).not.toBeInTheDocument();
 
-    // Switch back to Friends and submit
     await user.selectOptions(howWeMet, 'Friends');
     await user.type(screen.getByLabelText('Name *'), 'Chiara');
+    await user.selectOptions(screen.getByLabelText('City Where They Were Born'), 'Milan');
     const intimacySelect = screen.getByLabelText('Intimacy Level');
     expect(within(intimacySelect).getByRole('option', { name: 'Hand Foreplay' })).toBeInTheDocument();
     expect(within(intimacySelect).getByRole('option', { name: 'Oral Foreplay' })).toBeInTheDocument();
@@ -284,6 +307,8 @@ describe('PinEditorDialog', () => {
       metChannel: 'Friends',
       introducedByFriend: 'Marco',
       intimacyLevel: 'hand_foreplay',
+      birthCity: 'Milan',
+      city: 'Milan',
     });
   });
 
@@ -305,16 +330,12 @@ describe('PinEditorDialog', () => {
       </LanguageProvider>,
     );
 
-    // Edit mode footer shows "Save Changes" instead of "Save #N"
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Save #/ })).not.toBeInTheDocument();
-
-    // Zero-Cloud Privacy Badge is clearly displayed
     expect(screen.getByTestId('zero-cloud-badge')).toHaveTextContent(
       'Stored on Device Only · Zero Cloud Upload',
     );
 
-    // Upload a local image and video file into Section 6 Local Media Vault
     const fileInput = document.getElementById('pin-local-media-input') as HTMLInputElement;
     const imgFile = new File(['fake-image-bytes'], 'sunset.png', { type: 'image/png' });
     const vidFile = new File(['fake-video-bytes'], 'clip.mp4', { type: 'video/mp4' });
@@ -326,13 +347,11 @@ describe('PinEditorDialog', () => {
       expect(stored).toHaveLength(2);
     });
 
-    // First uploaded image acts as live avatar preview in Top Header
     await waitFor(() => {
       const avatarBox = screen.getByTestId('pin-live-avatar');
       expect(avatarBox.querySelector('img')).not.toBeNull();
     });
 
-    // Deleting the uploaded image removes it from IndexedDB and restores emoji avatar fallback
     await user.click(screen.getByRole('button', { name: 'Delete media item sunset.png' }));
     await waitFor(async () => {
       const remaining = await listMediaItemsForPin(existingPin.id);
@@ -341,7 +360,6 @@ describe('PinEditorDialog', () => {
     });
     expect(screen.getByTestId('pin-live-avatar')).toHaveTextContent('💃');
 
-    // Submit Save Changes -> passes null for cloud blob (zero cloud upload)
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledTimes(1);

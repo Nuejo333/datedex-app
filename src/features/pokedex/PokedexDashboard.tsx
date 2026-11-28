@@ -1,11 +1,13 @@
 /**
  * @module features/pokedex/PokedexDashboard
- * Full Pokédex & Analytics view featuring searchable/filterable cards,
- * world coverage meter, top nationalities leaderboard, rating distribution,
- * and milestone achievement badges.
+ * Full Pokédex & Analytics view featuring chronologically ordered mini cards
+ * (with sequential `#N` badge, Encounter Date, and Intimacy Date), world coverage meter,
+ * top nationalities leaderboard, rating distribution, milestone badges, and city filters
+ * (`All Cities`, `Born in`, `Lives in`, `Met in`).
  */
 import { useMemo, useState } from 'react';
-import { Award, Globe, Lock, Search, Star } from 'lucide-react';
+import { Award, Calendar, Flame, Globe, Lock, MapPin, Search, Star, X } from 'lucide-react';
+import { assignChronologicalNumbers } from '../../domain/analytics/chronology';
 import {
   computeBadges,
   computeRatingDistribution,
@@ -16,8 +18,16 @@ import {
 } from '../../domain/analytics/pokedexStats';
 import { COUNTRY_BY_CODE, getCountryFlag } from '../../domain/countries/countries';
 import {
+  EMPTY_CITY_FILTER,
+  getCityOptionsForDimension,
+  toCityFilterCriteria,
+  type ActiveCityFilter,
+  type CityFilterDimension,
+} from '../../domain/filters/pinCityFilters';
+import {
   MetChannelSchema,
   RelationshipStatusSchema,
+  formatCompactBadgeDate,
   formatTenScale,
   type DecryptedPin,
   type MetChannel,
@@ -68,39 +78,71 @@ const BADGE_TRANSLATION_KEYS: Record<string, { title: TranslationKey; desc: Tran
 export interface PokedexDashboardProps {
   pins: DecryptedPin[];
   discreetMode: boolean;
+  /** Optional shared city filter controlled by the root app shell so Pokédex and Map stay in sync. */
+  cityFilter?: ActiveCityFilter;
+  /** Callback when the user changes or clears the city filter. */
+  onCityFilterChange?: (next: ActiveCityFilter) => void;
   onSelectPin: (pin: DecryptedPin) => void;
 }
 
 /**
- * Renders the searchable Pokédex cards and global dating analytics dashboard.
- * @param {PokedexDashboardProps} props - Pins, discreet toggle, and card click callback.
+ * Renders the searchable, chronologically ordered Pokédex cards and global dating analytics dashboard.
+ * @param {PokedexDashboardProps} props - Pins, discreet toggle, city filter state, and card click callback.
  * @returns {React.JSX.Element} Pokédex analytics & card feed.
  */
 export function PokedexDashboard({
   pins,
   discreetMode,
+  cityFilter: controlledCityFilter,
+  onCityFilterChange,
   onSelectPin,
 }: PokedexDashboardProps): React.JSX.Element {
   const { t } = useTranslation();
+  const [internalCityFilter, setInternalCityFilter] =
+    useState<ActiveCityFilter>(EMPTY_CITY_FILTER);
+  const activeCityFilter = controlledCityFilter ?? internalCityFilter;
+  const updateCityFilter = onCityFilterChange ?? setInternalCityFilter;
+
   const [filter, setFilter] = useState<PokedexFilter>({
     searchQuery: '',
     nationalityCode: 'ALL',
     status: 'all',
     channel: 'all',
     minRating: 1,
-    sortBy: 'recent',
+    sortBy: 'chronological',
   });
 
-  const coverage = useMemo(() => computeWorldCoverage(pins), [pins]);
-  const topNationalities = useMemo(() => computeTopNationalities(pins, 5), [pins]);
-  const ratingBuckets = useMemo(() => computeRatingDistribution(pins), [pins]);
-  const badges = useMemo(() => computeBadges(pins), [pins]);
-  const filtered = useMemo(() => filterPins(pins, filter), [pins, filter]);
+  // Always compute canonical chronological #1..#N profile numbers deterministically
+  const numberedPins = useMemo(() => assignChronologicalNumbers(pins), [pins]);
+
+  const coverage = useMemo(() => computeWorldCoverage(numberedPins), [numberedPins]);
+  const topNationalities = useMemo(() => computeTopNationalities(numberedPins, 5), [numberedPins]);
+  const ratingBuckets = useMemo(() => computeRatingDistribution(numberedPins), [numberedPins]);
+  const badges = useMemo(() => computeBadges(numberedPins), [numberedPins]);
+
+  const cityOptions = useMemo(
+    () => getCityOptionsForDimension(numberedPins, activeCityFilter.dimension),
+    [numberedPins, activeCityFilter.dimension],
+  );
+
+  const filtered = useMemo(() => {
+    const cityCriteria = toCityFilterCriteria(activeCityFilter);
+    return filterPins(numberedPins, {
+      ...filter,
+      birthCity: cityCriteria.birthCity,
+      livingCity: cityCriteria.livingCity,
+      metCity: cityCriteria.metCity,
+      anyCity: cityCriteria.anyCity,
+    });
+  }, [numberedPins, filter, activeCityFilter]);
 
   const representedCountries = useMemo(() => {
-    const codes = Array.from(new Set(pins.map((p) => p.nationalityCode)));
+    const codes = Array.from(new Set(numberedPins.map((p) => p.nationalityCode)));
     return codes.sort((a, b) => a.localeCompare(b));
-  }, [pins]);
+  }, [numberedPins]);
+
+  const hasActiveCityFilter =
+    activeCityFilter.dimension !== 'all' || activeCityFilter.city.trim().length > 0;
 
   return (
     <div className="space-y-5">
@@ -206,7 +248,7 @@ export function PokedexDashboard({
         </div>
       </section>
 
-      {/* Search & Filters */}
+      {/* Search & Filters (including synchronized Birth / Living / Met City filters) */}
       <section className="space-y-2.5 rounded-2xl border border-white/10 bg-[#121622] p-4">
         <div className="relative">
           <Search
@@ -284,10 +326,71 @@ export function PokedexDashboard({
             }
             className="dd-input text-xs"
           >
+            <option value="chronological">{t('pokedex.sortChronological')}</option>
             <option value="recent">{t('pokedex.sortRecent')}</option>
             <option value="rating">{t('pokedex.sortRating')}</option>
             <option value="name">{t('pokedex.sortName')}</option>
           </select>
+        </div>
+
+        {/* Synchronized City Filter Row: All Cities / Born in / Lives in / Met in */}
+        <div
+          data-testid="pokedex-city-filter"
+          className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5"
+        >
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-sky-400" aria-hidden="true" />
+          <select
+            data-testid="pokedex-city-dimension"
+            aria-label={t('cityFilter.dimensionAria')}
+            value={activeCityFilter.dimension}
+            onChange={(e) => {
+              const nextDimension = e.target.value as CityFilterDimension;
+              const nextOptions = getCityOptionsForDimension(numberedPins, nextDimension);
+              const keepCity = nextOptions.includes(activeCityFilter.city)
+                ? activeCityFilter.city
+                : '';
+              updateCityFilter({ dimension: nextDimension, city: keepCity });
+            }}
+            className="dd-input w-auto min-w-[120px] flex-1 py-1.5 text-xs"
+          >
+            <option value="all">{t('cityFilter.allCities')}</option>
+            <option value="birthCity">{t('cityFilter.bornIn')}</option>
+            <option value="livingCity">{t('cityFilter.livesIn')}</option>
+            <option value="metCity">{t('cityFilter.metIn')}</option>
+          </select>
+
+          <select
+            data-testid="pokedex-city-value"
+            aria-label={t('cityFilter.cityAria')}
+            value={activeCityFilter.city}
+            onChange={(e) =>
+              updateCityFilter({
+                ...activeCityFilter,
+                city: e.target.value,
+              })
+            }
+            className="dd-input w-auto min-w-[130px] flex-1 py-1.5 text-xs"
+          >
+            <option value="">{t('cityFilter.allValues')}</option>
+            {cityOptions.map((cityName) => (
+              <option key={cityName} value={cityName}>
+                {cityName}
+              </option>
+            ))}
+          </select>
+
+          {hasActiveCityFilter && (
+            <button
+              type="button"
+              data-testid="pokedex-city-filter-clear"
+              aria-label={t('cityFilter.clearAria')}
+              onClick={() => updateCityFilter(EMPTY_CITY_FILTER)}
+              className="inline-flex items-center gap-1 rounded-xl border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/15"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('cityFilter.clear')}
+            </button>
+          )}
         </div>
       </section>
 
@@ -302,10 +405,17 @@ export function PokedexDashboard({
           {filtered.map((pin) => {
             const display = maskPinForDiscreet(pin, discreetMode);
             const flag = getCountryFlag(pin.nationalityCode);
+            const encounterDateStr = formatCompactBadgeDate(pin.dateMet) || pin.dateMet;
+            const intimacyDateStr = display.isMasked
+              ? '•••'
+              : formatCompactBadgeDate(pin.firstIntimateDate) ||
+                t('pokedex.card.noIntimacyDate');
+
             return (
               <button
                 key={pin.id}
                 type="button"
+                data-testid={`pokedex-card-${pin.id}`}
                 onClick={() => onSelectPin(pin)}
                 className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#121622] p-3.5 text-left transition hover:border-rose-400/40 hover:bg-[#171c2b]"
               >
@@ -317,15 +427,27 @@ export function PokedexDashboard({
                   />
                 ) : (
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white/5 text-2xl">
-                    {display.isMasked ? <Lock className="h-6 w-6 text-emerald-400" /> : flag}
+                    {display.isMasked ? (
+                      <Lock className="h-6 w-6 text-emerald-400" />
+                    ) : (
+                      pin.avatarEmoji || flag
+                    )}
                   </div>
                 )}
 
-                <div className="min-w-0 flex-1 space-y-1">
+                <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-bold text-white">
-                      {flag} {display.displayName}
-                      {!display.isMasked && pin.age ? `, ${pin.age}` : ''}
+                    <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-sm font-bold text-white">
+                      <span
+                        data-testid={`pokedex-card-number-${pin.id}`}
+                        className="shrink-0 rounded bg-amber-400/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-300"
+                      >
+                        #{pin.entryNumber}
+                      </span>
+                      <span className="truncate">
+                        {flag} {display.displayName}
+                        {!display.isMasked && pin.age ? `, ${pin.age}` : ''}
+                      </span>
                     </span>
                     <span className="shrink-0 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-300">
                       {formatTenScale(pin.rating)}
@@ -336,6 +458,23 @@ export function PokedexDashboard({
                     {display.displayCity} • {pin.metChannel} •{' '}
                     {t(STATUS_TRANSLATION_KEY[pin.relationshipStatus])}
                   </p>
+
+                  {/* Chronological Encounter Date + Intimacy Date strip */}
+                  <div
+                    data-testid={`pokedex-card-dates-${pin.id}`}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-amber-400" aria-hidden="true" />
+                      <span className="text-slate-400">{t('pokedex.card.encounterDate')}:</span>{' '}
+                      <span className="font-mono text-slate-200">{encounterDateStr}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Flame className="h-3 w-3 text-rose-400" aria-hidden="true" />
+                      <span className="text-slate-400">{t('pokedex.card.intimacyDate')}:</span>{' '}
+                      <span className="font-mono text-rose-200">{intimacyDateStr}</span>
+                    </span>
+                  </div>
 
                   <p className="line-clamp-2 text-[11px] text-slate-400">
                     {display.displayNotes || t('pokedex.noPrivateNotes')}

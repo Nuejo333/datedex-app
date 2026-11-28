@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { Session, User, UserIdentity } from '@supabase/supabase-js';
 import { computeHudStats } from '../domain/analytics/pokedexStats';
+import { EMPTY_CITY_FILTER, type ActiveCityFilter } from '../domain/filters/pinCityFilters';
 import type { MapCoordinate, MapMarker, MapViewport } from '../domain/map/types';
 import {
   isProSubscriptionActive,
@@ -92,6 +93,7 @@ function AppShell(): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [interstitialOpen, setInterstitialOpen] = useState(false);
+  const [cityFilter, setCityFilter] = useState<ActiveCityFilter>(EMPTY_CITY_FILTER);
   const [viewport, setViewport] = useState<MapViewport>({ latitude: 20, longitude: 0, zoom: 1.8 });
   const [session, setSession] = useState<Session | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -145,6 +147,7 @@ function AppShell(): React.JSX.Element {
     setUnlockOpen(false);
     setImportOpen(false);
     setInterstitialOpen(false);
+    setCityFilter(EMPTY_CITY_FILTER);
     setActiveTab('map');
 
     // Wipe local IndexedDB tables, in-memory crypto keys, and user-specific storage caches
@@ -668,6 +671,8 @@ function AppShell(): React.JSX.Element {
             <PokedexDashboard
               pins={pins}
               discreetMode={vaultSettings.discreetMode}
+              cityFilter={cityFilter}
+              onCityFilterChange={setCityFilter}
               onSelectPin={(pin) => {
                 setEditingPin(pin);
                 setDroppedCoord(null);
@@ -698,6 +703,8 @@ function AppShell(): React.JSX.Element {
                 draftCoordinate={droppedCoord}
                 discreetMode={vaultSettings.discreetMode}
                 viewport={viewport}
+                cityFilter={cityFilter}
+                onCityFilterChange={setCityFilter}
                 onViewportChange={setViewport}
                 onSelectMarker={(pinId) => {
                   const found = pins.find((p) => p.id === pinId) ?? null;
@@ -790,6 +797,7 @@ function AppShell(): React.JSX.Element {
         open={editorOpen}
         initialPin={editingPin}
         droppedCoordinate={droppedCoord}
+        existingPins={pins}
         nextEntryNumber={nextEntryNumber}
         datingPreference={profile?.datingPreference ?? 'everyone'}
         onClose={() => {

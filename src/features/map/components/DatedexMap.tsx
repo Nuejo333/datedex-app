@@ -6,9 +6,17 @@
  * proximity clustering with zoom-to-expand, Vault/Discreet masking, and strict cleanup.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MapPin, X } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { getCountryFlag } from '../../../domain/countries/countries';
+import {
+  EMPTY_CITY_FILTER,
+  filterByActiveCityFilter,
+  getCityOptionsForDimension,
+  type ActiveCityFilter,
+  type CityFilterDimension,
+} from '../../../domain/filters/pinCityFilters';
 import type { MapMarker, MapProviderProps } from '../../../domain/map/types';
 import type { DecryptedPin } from '../../../domain/models/pin';
 import { maskPinForDiscreet, type DisplayPin } from '../../../domain/vault/masking';
@@ -32,6 +40,10 @@ import { MapFloatingControls } from './MapFloatingControls';
 export interface DatedexMapProps extends MapProviderProps {
   /** Optional full decrypted pins used by `maskPinForDiscreet` for vault aliases. */
   pins?: DecryptedPin[];
+  /** Optional shared city filter synchronized with `Pokédex`. */
+  cityFilter?: ActiveCityFilter;
+  /** Callback when the user changes or clears the map city filter. */
+  onCityFilterChange?: (next: ActiveCityFilter) => void;
   /** Optional token override; defaults strictly to `import.meta.env.VITE_MAPBOX_ACCESS_TOKEN`. */
   accessToken?: string;
 }
@@ -408,9 +420,16 @@ export function DatedexMap({
   viewport,
   onViewportChange,
   onSelectMarker,
+  cityFilter: controlledCityFilter,
+  onCityFilterChange,
   accessToken,
 }: DatedexMapProps): React.JSX.Element {
   const { t } = useTranslation();
+  const [internalCityFilter, setInternalCityFilter] =
+    useState<ActiveCityFilter>(EMPTY_CITY_FILTER);
+  const activeCityFilter = controlledCityFilter ?? internalCityFilter;
+  const updateCityFilter = onCityFilterChange ?? setInternalCityFilter;
+
   // Security: read public token strictly from Vite env (never hardcoded)
   const resolvedToken = (accessToken ?? import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? '').trim();
   const hasMapboxToken = resolvedToken.length > 0;
@@ -558,9 +577,22 @@ export function DatedexMap({
     };
   }, [hasMapboxToken, resolvedToken, clearMountedMarkers]);
 
+  const cityFilterOptions = useMemo(
+    () => getCityOptionsForDimension(markers, activeCityFilter.dimension),
+    [markers, activeCityFilter.dimension],
+  );
+
+  const filteredMarkers = useMemo(
+    () => filterByActiveCityFilter(markers, activeCityFilter),
+    [markers, activeCityFilter],
+  );
+
+  const hasActiveCityFilter =
+    activeCityFilter.dimension !== 'all' || activeCityFilter.city.trim().length > 0;
+
   const renderItems = useMemo(
-    () => clusterMapMarkers(markers, liveZoom),
-    [markers, liveZoom],
+    () => clusterMapMarkers(filteredMarkers, liveZoom),
+    [filteredMarkers, liveZoom],
   );
 
   // Synchronize pin & cluster markers with Vault/Discreet masking
@@ -878,6 +910,66 @@ export function DatedexMap({
           </div>
         </div>
       )}
+
+      {/* Compact Monochrome City Filter Pill (All Cities / Born in / Lives in / Met in) */}
+      <div
+        data-testid="map-city-filter"
+        className="absolute top-3 left-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-1.5 rounded-xl border border-white/15 bg-[#111111]/90 px-2 py-1.5 shadow-xl shadow-black/60 backdrop-blur-md"
+      >
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-neutral-300" aria-hidden="true" />
+        <select
+          data-testid="map-city-dimension"
+          aria-label={t('cityFilter.dimensionAria')}
+          value={activeCityFilter.dimension}
+          onChange={(e) => {
+            const nextDimension = e.target.value as CityFilterDimension;
+            const nextOptions = getCityOptionsForDimension(markers, nextDimension);
+            const keepCity = nextOptions.includes(activeCityFilter.city)
+              ? activeCityFilter.city
+              : '';
+            updateCityFilter({ dimension: nextDimension, city: keepCity });
+          }}
+          className="rounded-lg border border-white/15 bg-black/80 px-2 py-1 text-[11px] font-medium text-white focus-visible:outline-2 focus-visible:outline-white"
+        >
+          <option value="all">{t('cityFilter.allCities')}</option>
+          <option value="birthCity">{t('cityFilter.bornIn')}</option>
+          <option value="livingCity">{t('cityFilter.livesIn')}</option>
+          <option value="metCity">{t('cityFilter.metIn')}</option>
+        </select>
+
+        <select
+          data-testid="map-city-value"
+          aria-label={t('cityFilter.cityAria')}
+          value={activeCityFilter.city}
+          onChange={(e) =>
+            updateCityFilter({
+              ...activeCityFilter,
+              city: e.target.value,
+            })
+          }
+          className="max-w-[140px] rounded-lg border border-white/15 bg-black/80 px-2 py-1 text-[11px] font-medium text-white focus-visible:outline-2 focus-visible:outline-white"
+        >
+          <option value="">{t('cityFilter.allValues')}</option>
+          {cityFilterOptions.map((cityName) => (
+            <option key={cityName} value={cityName}>
+              {cityName}
+            </option>
+          ))}
+        </select>
+
+        {hasActiveCityFilter && (
+          <button
+            type="button"
+            data-testid="map-city-filter-clear"
+            aria-label={t('cityFilter.clearAria')}
+            onClick={() => updateCityFilter(EMPTY_CITY_FILTER)}
+            className="inline-flex items-center gap-0.5 rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-medium text-white hover:bg-white/20"
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+            {t('cityFilter.clear')}
+          </button>
+        )}
+      </div>
 
       {/* Floating Bottom-Right Monochrome Controls (3D toggle above +/- zoom & recenter) */}
       <MapFloatingControls

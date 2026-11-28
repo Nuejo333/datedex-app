@@ -6,6 +6,7 @@
 import type { DecryptedPin, MetChannel, RelationshipStatus } from '../models/pin';
 import { COUNTRY_BY_CODE, TOTAL_UN_COUNTRIES, getCountryFlag } from '../countries/countries';
 import { matchesPinCityFilter } from '../filters/pinCityFilters';
+import { comparePinsChronologically } from './chronology';
 
 /**
  * Top HUD bar summary statistics.
@@ -66,10 +67,11 @@ export interface PokedexFilter {
   status: RelationshipStatus | 'all';
   channel: MetChannel | 'all';
   minRating: number;
-  sortBy: 'recent' | 'rating' | 'name';
+  sortBy: 'chronological' | 'recent' | 'rating' | 'name';
   birthCity?: string;
   livingCity?: string;
   metCity?: string;
+  anyCity?: string;
 }
 
 /**
@@ -264,6 +266,7 @@ export function filterPins(
         birthCity: filter.birthCity,
         livingCity: filter.livingCity,
         metCity: filter.metCity,
+        anyCity: filter.anyCity,
       })
     ) {
       return false;
@@ -277,6 +280,7 @@ export function filterPins(
   });
 
   return filtered.sort((a, b) => {
+    if (filter.sortBy === 'chronological') return comparePinsChronologically(a, b);
     if (filter.sortBy === 'rating') return b.rating - a.rating || b.dateMet.localeCompare(a.dateMet);
     if (filter.sortBy === 'name') return a.name.localeCompare(b.name);
     return b.dateMet.localeCompare(a.dateMet) || b.updatedAt.localeCompare(a.updatedAt);

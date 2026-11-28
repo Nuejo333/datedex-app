@@ -26,18 +26,13 @@ import {
   Heart,
   MapPin,
   Plus,
-  Search,
   ShieldCheck,
   Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
-import {
-  COUNTRIES,
-  COUNTRY_BY_CODE,
-  searchCities,
-  searchCountries,
-} from '../../domain/countries/countries';
+import { previewChronologicalEntryNumber } from '../../domain/analytics/chronology';
+import { COUNTRIES, COUNTRY_BY_CODE } from '../../domain/countries/countries';
 import { resolvePinLocation } from '../../domain/countries/locationResolver';
 import type { MapCoordinate } from '../../domain/map/types';
 import {
@@ -80,6 +75,7 @@ import {
   VIBE_AESTHETIC_PRESETS,
   type AppearanceGenderMode,
 } from './appearancePresets';
+import { RealCitySelector } from './RealCitySelector';
 
 const STATUS_KEYS: Record<RelationshipStatus, TranslationKey> = {
   talking: 'status.talking',
@@ -129,7 +125,9 @@ export interface PinEditorDialogProps {
   open: boolean;
   initialPin: DecryptedPin | null;
   droppedCoordinate: MapCoordinate | null;
-  /** Next sequential entry number displayed as `#N` and `Save #N` for new entries. */
+  /** All currently saved connections used to dynamically calculate chronological `#N` position. */
+  existingPins?: readonly DecryptedPin[];
+  /** Fallback sequential entry number when `existingPins` is not supplied. */
   nextEntryNumber?: number;
   /** User's dating preference driving dynamic pronouns (`her` / `his` / `their`). */
   datingPreference?: DatingPreference;
@@ -150,6 +148,7 @@ export function PinEditorDialog({
   open,
   initialPin,
   droppedCoordinate,
+  existingPins,
   nextEntryNumber = 1,
   datingPreference = 'everyone',
   onClose,
@@ -194,13 +193,10 @@ export function PinEditorDialog({
   const [aestheticVote, setAestheticVote] = useState(7);
 
   // Multi-Nationalities & Cities (Section 2)
-  const [countrySearch, setCountrySearch] = useState('');
   const [nationalities, setNationalities] = useState<string[]>(['IT']);
-  const [activeRootIndex, setActiveRootIndex] = useState(0);
   const [birthCity, setBirthCity] = useState('');
   const [livingCity, setLivingCity] = useState('');
   const [metCity, setMetCity] = useState('');
-  const [birthCityFocused, setBirthCityFocused] = useState(false);
 
   // The Encounter & Overall Vote (Section 3)
   const [dateMet, setDateMet] = useState(getTodayIsoDate);
@@ -245,8 +241,6 @@ export function PinEditorDialog({
     setErrorMsg(null);
     setMediaError(null);
     setEmojiPickerOpen(false);
-    setCountrySearch('');
-    setActiveRootIndex(0);
     setCustomTrait('');
     setCustomLocation('');
     setCustomIntimateTag('');
@@ -395,7 +389,19 @@ export function PinEditorDialog({
     [datingPreference],
   );
 
-  const effectiveEntryNumber = initialPin?.entryNumber ?? nextEntryNumber;
+  const effectiveEntryNumber = useMemo(() => {
+    if (existingPins && existingPins.length > 0) {
+      return previewChronologicalEntryNumber(existingPins, {
+        id: initialPin?.id,
+        dateMet,
+        firstIntimateDate,
+        name,
+        createdAt: initialPin?.createdAt,
+      });
+    }
+    return initialPin?.entryNumber ?? nextEntryNumber;
+  }, [existingPins, initialPin, dateMet, firstIntimateDate, name, nextEntryNumber]);
+
   const chronologicalBadge = useMemo(
     () => formatChronologicalBadge(effectiveEntryNumber, firstIntimateDate, dateMet),
     [effectiveEntryNumber, firstIntimateDate, dateMet],
@@ -418,11 +424,10 @@ export function PinEditorDialog({
     [birthCity, nationalities, droppedCoordinate],
   );
 
-  const countryMatches = useMemo(() => searchCountries(countrySearch, 8), [countrySearch]);
-  const birthCitySuggestions = useMemo(
-    () => (birthCity.trim().length > 0 ? searchCities(birthCity, 6) : []),
-    [birthCity],
-  );
+  const primaryCapitalName = useMemo(() => {
+    const primaryCode = nationalities[0] ?? '';
+    return COUNTRY_BY_CODE.get(primaryCode)?.capital ?? resolvedLocation.capitalCity ?? 'Capital';
+  }, [nationalities, resolvedLocation.capitalCity]);
 
   const availableChannels = useMemo<MetChannel[]>(() => {
     const base: MetChannel[] = [...CANONICAL_MET_CHANNELS];
@@ -440,26 +445,15 @@ export function PinEditorDialog({
     });
   };
 
-  const handleQuickCountrySelect = (countryCode: string): void => {
-    const targetIdx = activeRootIndex < nationalities.length ? activeRootIndex : 0;
-    setRootAtIndex(targetIdx, countryCode);
-    setCountrySearch('');
-  };
-
   const handleAddRoot = (): void => {
     const used = new Set(nationalities);
     const nextFallback = COUNTRIES.find((c) => !used.has(c.code))?.code ?? 'FR';
-    setNationalities((prev) => {
-      const next = [...prev, nextFallback];
-      setActiveRootIndex(next.length - 1);
-      return next;
-    });
+    setNationalities((prev) => [...prev, nextFallback]);
   };
 
   const handleRemoveRoot = (index: number): void => {
     if (index === 0) return;
     setNationalities((prev) => prev.filter((_, idx) => idx !== index));
-    setActiveRootIndex(0);
   };
 
   const toggleListValue = (
@@ -650,7 +644,9 @@ export function PinEditorDialog({
       aria-labelledby="pin-editor-title"
       className="dd-dialog"
     >
-      {/* Top Header & Live Preview Strip */}
+      {open && (
+        <>
+          {/* Top Header & Live Preview Strip */}
       <header
         data-testid="pin-editor-header"
         className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#141927] px-5 py-4"
@@ -1151,56 +1147,6 @@ export function PinEditorDialog({
               {t('pinEditor.section2Title')}
             </h2>
 
-            {/* Quick Search Country Filter Bar */}
-            <div className="space-y-2">
-              <label
-                htmlFor="pin-country-search"
-                className="block text-xs font-medium text-slate-300"
-              >
-                {t('pinEditor.countrySearchLabel')}
-              </label>
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute top-3 left-3 h-4 w-4 text-slate-400"
-                  aria-hidden="true"
-                />
-                <input
-                  id="pin-country-search"
-                  name="countrySearch"
-                  type="search"
-                  autoCorrect="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={countrySearch}
-                  onChange={(e) => setCountrySearch(e.target.value)}
-                  placeholder={t('pinEditor.countrySearchPlaceholder')}
-                  className="dd-input pl-9 text-sm"
-                />
-              </div>
-              <div
-                data-testid="country-quick-chips"
-                className="flex flex-wrap gap-1.5"
-              >
-                {countryMatches.map((country) => (
-                  <button
-                    key={country.code}
-                    type="button"
-                    data-testid={`country-chip-${country.code}`}
-                    onClick={() => handleQuickCountrySelect(country.code)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                      nationalities[activeRootIndex] === country.code
-                        ? 'border-sky-400/60 bg-sky-500/20 text-sky-100'
-                        : 'border-white/10 bg-slate-900/80 text-slate-200 hover:border-white/25'
-                    }`}
-                  >
-                    <span>{country.flag}</span>
-                    <span>{country.name}</span>
-                    <span className="text-[10px] text-slate-400">· {country.continent}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Multi-Nationality Stack (Main Roots, 2nd Roots, 3rd Roots, ...) */}
             <div className="space-y-2.5" data-testid="multi-nationality-stack">
               {nationalities.map((code, idx) => (
@@ -1221,11 +1167,7 @@ export function PinEditorDialog({
                       id={`pin-root-${idx}`}
                       name={`nationalityRoot_${idx}`}
                       value={code}
-                      onFocus={() => setActiveRootIndex(idx)}
-                      onChange={(e) => {
-                        setActiveRootIndex(idx);
-                        setRootAtIndex(idx, e.target.value);
-                      }}
+                      onChange={(e) => setRootAtIndex(idx, e.target.value)}
                       className="dd-input text-xs"
                     >
                       {COUNTRIES.map((c) => (
@@ -1258,85 +1200,46 @@ export function PinEditorDialog({
               </button>
             </div>
 
-            {/* City Where They Were Born (Not Required) */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="pin-birth-city"
-                className="block text-xs font-medium text-slate-300"
-              >
-                {t('pinEditor.birthCityLabel')}
-              </label>
-              <input
-                id="pin-birth-city"
-                name="birthCity"
-                type="text"
-                maxLength={120}
-                value={birthCity}
-                onFocus={() => setBirthCityFocused(true)}
-                onBlur={() => setTimeout(() => setBirthCityFocused(false), 120)}
-                onChange={(e) => setBirthCity(e.target.value)}
-                placeholder={t('pinEditor.birthCityPlaceholder')}
-                className="dd-input text-sm"
-              />
-              {birthCityFocused && birthCitySuggestions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {birthCitySuggestions.map((entry) => (
-                    <button
-                      key={`${entry.city}-${entry.countryCode}`}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setBirthCity(entry.city);
-                        setBirthCityFocused(false);
-                      }}
-                      className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 py-1 text-xs text-sky-200 hover:bg-sky-500/20"
-                    >
-                      {entry.city}, {entry.countryCode}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* City Where They Were Born (Real-City Selector + Capital Fallback) */}
+            <RealCitySelector
+              id="pin-birth-city"
+              name="birthCity"
+              label={t('pinEditor.birthCityLabel')}
+              value={birthCity}
+              onChange={setBirthCity}
+              countryCodes={nationalities}
+              allowAllCountries
+              emptyOptionLabel={t('citySelector.capitalFallback', {
+                capital: primaryCapitalName,
+              })}
+              testId="birth-city-selector"
+            />
 
-            {/* City Where They Live (Optional) & City Where We Met (Optional) */}
+            {/* City Where They Live & City Where We Met (Real-City Selectors) */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="pin-living-city"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  {t('pinEditor.livingCityLabel')}
-                </label>
-                <input
-                  id="pin-living-city"
-                  name="livingCity"
-                  type="text"
-                  maxLength={120}
-                  value={livingCity}
-                  onChange={(e) => setLivingCity(e.target.value)}
-                  placeholder={t('pinEditor.livingCityPlaceholder')}
-                  className="dd-input text-sm"
-                />
-              </div>
+              <RealCitySelector
+                id="pin-living-city"
+                name="livingCity"
+                label={t('pinEditor.livingCityLabel')}
+                value={livingCity}
+                onChange={setLivingCity}
+                countryCodes={nationalities}
+                allowAllCountries
+                emptyOptionLabel={t('citySelector.noneSelected')}
+                testId="living-city-selector"
+              />
 
-              <div>
-                <label
-                  htmlFor="pin-met-city"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  {t('pinEditor.metCityLabel')}
-                </label>
-                <input
-                  id="pin-met-city"
-                  name="metCity"
-                  type="text"
-                  maxLength={120}
-                  value={metCity}
-                  onChange={(e) => setMetCity(e.target.value)}
-                  placeholder={t('pinEditor.metCityPlaceholder')}
-                  className="dd-input text-sm"
-                />
-              </div>
+              <RealCitySelector
+                id="pin-met-city"
+                name="metCity"
+                label={t('pinEditor.metCityLabel')}
+                value={metCity}
+                onChange={setMetCity}
+                countryCodes={nationalities}
+                allowAllCountries
+                emptyOptionLabel={t('citySelector.noneSelected')}
+                testId="met-city-selector"
+              />
             </div>
 
             {/* Resolved Pin Coordinate Preview */}
@@ -1593,24 +1496,17 @@ export function PinEditorDialog({
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="pin-hookup-city"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  {t('pinEditor.hookupCityLabel')}
-                </label>
-                <input
-                  id="pin-hookup-city"
-                  name="hookupCity"
-                  type="text"
-                  maxLength={120}
-                  value={hookupCity}
-                  onChange={(e) => setHookupCity(e.target.value)}
-                  placeholder={t('pinEditor.hookupCityPlaceholder')}
-                  className="dd-input"
-                />
-              </div>
+              <RealCitySelector
+                id="pin-hookup-city"
+                name="hookupCity"
+                label={t('pinEditor.hookupCityLabel')}
+                value={hookupCity}
+                onChange={setHookupCity}
+                countryCodes={nationalities}
+                allowAllCountries
+                emptyOptionLabel={t('citySelector.noneSelected')}
+                testId="hookup-city-selector"
+              />
             </div>
 
             {/* Bed Vote Slider (Rose 0-10) */}
@@ -1996,6 +1892,8 @@ export function PinEditorDialog({
           </div>
         </footer>
       </form>
+        </>
+      )}
     </dialog>
   );
 }

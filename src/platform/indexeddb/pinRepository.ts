@@ -3,6 +3,7 @@
  * Local-first encrypted repository bridging Dexie IndexedDB and Web Crypto AES-GCM,
  * plus encrypted JSON backup export/restore for offline-only users.
  */
+import { assignChronologicalNumbers } from '../../domain/analytics/chronology';
 import type { ICryptoService } from '../../domain/crypto/types';
 import {
   PinInputSchema,
@@ -134,7 +135,8 @@ export class LocalPinRepository {
       });
     }
 
-    return decrypted.sort((a, b) => b.dateMet.localeCompare(a.dateMet));
+    // Recompute sequential #1..#N profile numbers in deterministic chronological order
+    return assignChronologicalNumbers(decrypted);
   }
 
   /**

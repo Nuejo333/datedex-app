@@ -322,62 +322,141 @@ export const COUNTRY_BY_CODE: ReadonlyMap<string, CountryEntry> = new Map(
 );
 
 const ADDITIONAL_GLOBAL_CITIES: ReadonlyArray<CityCoordinateEntry> = [
+  { city: 'Aarhus', countryCode: 'DK', latitude: 56.1629, longitude: 10.2039 },
+  { city: 'Alexandria', countryCode: 'EG', latitude: 31.2001, longitude: 29.9187 },
+  { city: 'Alicante', countryCode: 'ES', latitude: 38.3452, longitude: -0.481 },
+  { city: 'Antwerp', countryCode: 'BE', latitude: 51.2194, longitude: 4.4025 },
+  { city: 'Atlanta', countryCode: 'US', latitude: 33.749, longitude: -84.388 },
+  { city: 'Auckland', countryCode: 'NZ', latitude: -36.8509, longitude: 174.7645 },
   { city: 'Austin', countryCode: 'US', latitude: 30.2672, longitude: -97.7431 },
   { city: 'Bali (Canggu)', countryCode: 'ID', latitude: -8.6478, longitude: 115.1385 },
   { city: 'Barcelona', countryCode: 'ES', latitude: 41.3874, longitude: 2.1686 },
+  { city: 'Bari', countryCode: 'IT', latitude: 41.1171, longitude: 16.8719 },
+  { city: 'Basel', countryCode: 'CH', latitude: 47.5596, longitude: 7.5886 },
+  { city: 'Belo Horizonte', countryCode: 'BR', latitude: -19.9167, longitude: -43.9345 },
+  { city: 'Bengaluru', countryCode: 'IN', latitude: 12.9716, longitude: 77.5946 },
+  { city: 'Bergen', countryCode: 'NO', latitude: 60.3913, longitude: 5.3221 },
   { city: 'Bilbao', countryCode: 'ES', latitude: 43.263, longitude: -2.935 },
+  { city: 'Birmingham', countryCode: 'GB', latitude: 52.4862, longitude: -1.8904 },
   { city: 'Bologna', countryCode: 'IT', latitude: 44.4949, longitude: 11.3426 },
   { city: 'Bordeaux', countryCode: 'FR', latitude: 44.8378, longitude: -0.5792 },
   { city: 'Boston', countryCode: 'US', latitude: 42.3601, longitude: -71.0589 },
+  { city: 'Brisbane', countryCode: 'AU', latitude: -27.4705, longitude: 153.026 },
+  { city: 'Bristol', countryCode: 'GB', latitude: 51.4545, longitude: -2.5879 },
+  { city: 'Busan', countryCode: 'KR', latitude: 35.1796, longitude: 129.0756 },
+  { city: 'Calgary', countryCode: 'CA', latitude: 51.0447, longitude: -114.0719 },
+  { city: 'Cali', countryCode: 'CO', latitude: 3.4516, longitude: -76.532 },
   { city: 'Cancún', countryCode: 'MX', latitude: 21.1619, longitude: -86.8515 },
   { city: 'Cape Town', countryCode: 'ZA', latitude: -33.9249, longitude: 18.4241 },
   { city: 'Cartagena', countryCode: 'CO', latitude: 10.391, longitude: -75.4794 },
+  { city: 'Casablanca', countryCode: 'MA', latitude: 33.5731, longitude: -7.5898 },
+  { city: 'Catania', countryCode: 'IT', latitude: 37.5079, longitude: 15.083 },
+  { city: 'Cebu', countryCode: 'PH', latitude: 10.3157, longitude: 123.8854 },
+  { city: 'Chiang Mai', countryCode: 'TH', latitude: 18.7883, longitude: 98.9853 },
   { city: 'Chicago', countryCode: 'US', latitude: 41.8781, longitude: -87.6298 },
+  { city: 'Cologne', countryCode: 'DE', latitude: 50.9375, longitude: 6.9603 },
+  { city: 'Córdoba', countryCode: 'AR', latitude: -31.4201, longitude: -64.1888 },
+  { city: 'Cork', countryCode: 'IE', latitude: 51.8985, longitude: -8.4756 },
+  { city: 'Cusco', countryCode: 'PE', latitude: -13.5319, longitude: -71.9675 },
+  { city: 'Dallas', countryCode: 'US', latitude: 32.7767, longitude: -96.797 },
+  { city: 'Da Nang', countryCode: 'VN', latitude: 16.0544, longitude: 108.2022 },
+  { city: 'Denver', countryCode: 'US', latitude: 39.7392, longitude: -104.9903 },
   { city: 'Dubai', countryCode: 'AE', latitude: 25.2048, longitude: 55.2708 },
+  { city: 'Dubrovnik', countryCode: 'HR', latitude: 42.6507, longitude: 18.0944 },
+  { city: 'Düsseldorf', countryCode: 'DE', latitude: 51.2277, longitude: 6.7735 },
   { city: 'Edinburgh', countryCode: 'GB', latitude: 55.9533, longitude: -3.1883 },
+  { city: 'Faro', countryCode: 'PT', latitude: 37.0194, longitude: -7.9322 },
   { city: 'Florence', countryCode: 'IT', latitude: 43.7696, longitude: 11.2558 },
+  { city: 'Florianópolis', countryCode: 'BR', latitude: -27.5954, longitude: -48.548 },
   { city: 'Frankfurt', countryCode: 'DE', latitude: 50.1109, longitude: 8.6821 },
+  { city: 'Fukuoka', countryCode: 'JP', latitude: 33.5902, longitude: 130.4017 },
+  { city: 'Gdańsk', countryCode: 'PL', latitude: 54.352, longitude: 18.6466 },
   { city: 'Geneva', countryCode: 'CH', latitude: 46.2044, longitude: 6.1432 },
+  { city: 'Genoa', countryCode: 'IT', latitude: 44.4056, longitude: 8.9463 },
+  { city: 'Ghent', countryCode: 'BE', latitude: 51.0543, longitude: 3.7174 },
+  { city: 'Glasgow', countryCode: 'GB', latitude: 55.8642, longitude: -4.2518 },
+  { city: 'Gothenburg', countryCode: 'SE', latitude: 57.7089, longitude: 11.9746 },
+  { city: 'Granada', countryCode: 'ES', latitude: 37.1773, longitude: -3.5986 },
+  { city: 'Graz', countryCode: 'AT', latitude: 47.0707, longitude: 15.4395 },
   { city: 'Guadalajara', countryCode: 'MX', latitude: 20.6597, longitude: -103.3496 },
+  { city: 'Guangzhou', countryCode: 'CN', latitude: 23.1291, longitude: 113.2644 },
   { city: 'Hamburg', countryCode: 'DE', latitude: 53.5511, longitude: 9.9937 },
   { city: 'Ho Chi Minh City', countryCode: 'VN', latitude: 10.8231, longitude: 106.6297 },
+  { city: 'Houston', countryCode: 'US', latitude: 29.7604, longitude: -95.3698 },
   { city: 'Ibiza', countryCode: 'ES', latitude: 38.9067, longitude: 1.4206 },
   { city: 'Istanbul', countryCode: 'TR', latitude: 41.0082, longitude: 28.9784 },
+  { city: 'Izmir', countryCode: 'TR', latitude: 38.4237, longitude: 27.1428 },
+  { city: 'Johannesburg', countryCode: 'ZA', latitude: -26.2041, longitude: 28.0473 },
   { city: 'Krakow', countryCode: 'PL', latitude: 50.0647, longitude: 19.945 },
   { city: 'Kyoto', countryCode: 'JP', latitude: 35.0116, longitude: 135.7681 },
+  { city: 'Lagos', countryCode: 'NG', latitude: 6.5244, longitude: 3.3792 },
+  { city: 'Las Vegas', countryCode: 'US', latitude: 36.1699, longitude: -115.1398 },
+  { city: 'Lausanne', countryCode: 'CH', latitude: 46.5197, longitude: 6.6323 },
+  { city: 'Lille', countryCode: 'FR', latitude: 50.6292, longitude: 3.0573 },
+  { city: 'Liverpool', countryCode: 'GB', latitude: 53.4084, longitude: -2.9916 },
   { city: 'Los Angeles', countryCode: 'US', latitude: 34.0522, longitude: -118.2437 },
+  { city: 'Lviv', countryCode: 'UA', latitude: 49.8397, longitude: 24.0297 },
   { city: 'Lyon', countryCode: 'FR', latitude: 45.764, longitude: 4.8357 },
   { city: 'Malaga', countryCode: 'ES', latitude: 36.7213, longitude: -4.4214 },
+  { city: 'Malmö', countryCode: 'SE', latitude: 55.605, longitude: 13.0038 },
   { city: 'Manchester', countryCode: 'GB', latitude: 53.4808, longitude: -2.2426 },
   { city: 'Marrakech', countryCode: 'MA', latitude: 31.6295, longitude: -7.9811 },
   { city: 'Marseille', countryCode: 'FR', latitude: 43.2965, longitude: 5.3698 },
   { city: 'Medellín', countryCode: 'CO', latitude: 6.2476, longitude: -75.5658 },
   { city: 'Melbourne', countryCode: 'AU', latitude: -37.8136, longitude: 144.9631 },
+  { city: 'Mendoza', countryCode: 'AR', latitude: -32.8895, longitude: -68.8458 },
   { city: 'Miami', countryCode: 'US', latitude: 25.7617, longitude: -80.1918 },
   { city: 'Milan', countryCode: 'IT', latitude: 45.4642, longitude: 9.19 },
+  { city: 'Monterrey', countryCode: 'MX', latitude: 25.6866, longitude: -100.3161 },
+  { city: 'Montpellier', countryCode: 'FR', latitude: 43.6108, longitude: 3.8767 },
   { city: 'Montreal', countryCode: 'CA', latitude: 45.5017, longitude: -73.5673 },
   { city: 'Mumbai', countryCode: 'IN', latitude: 19.076, longitude: 72.8777 },
   { city: 'Munich', countryCode: 'DE', latitude: 48.1351, longitude: 11.582 },
+  { city: 'Mykonos', countryCode: 'GR', latitude: 37.4467, longitude: 25.3289 },
+  { city: 'Nagoya', countryCode: 'JP', latitude: 35.1815, longitude: 136.9066 },
   { city: 'Naples', countryCode: 'IT', latitude: 40.8518, longitude: 14.2681 },
   { city: 'New York', countryCode: 'US', latitude: 40.7128, longitude: -74.006 },
   { city: 'Nice', countryCode: 'FR', latitude: 43.7102, longitude: 7.262 },
+  { city: 'Odesa', countryCode: 'UA', latitude: 46.4825, longitude: 30.7233 },
   { city: 'Osaka', countryCode: 'JP', latitude: 34.6937, longitude: 135.5023 },
   { city: 'Palermo', countryCode: 'IT', latitude: 38.1157, longitude: 13.3615 },
+  { city: 'Palma de Mallorca', countryCode: 'ES', latitude: 39.5696, longitude: 2.6502 },
+  { city: 'Perth', countryCode: 'AU', latitude: -31.9505, longitude: 115.8605 },
+  { city: 'Phuket', countryCode: 'TH', latitude: 7.8804, longitude: 98.3923 },
   { city: 'Porto', countryCode: 'PT', latitude: 41.1579, longitude: -8.6291 },
+  { city: 'Recife', countryCode: 'BR', latitude: -8.0476, longitude: -34.877 },
   { city: 'Rio de Janeiro', countryCode: 'BR', latitude: -22.9068, longitude: -43.1729 },
+  { city: 'Rosario', countryCode: 'AR', latitude: -32.9442, longitude: -60.6505 },
   { city: 'Rotterdam', countryCode: 'NL', latitude: 51.9244, longitude: 4.4777 },
+  { city: 'Saint Petersburg', countryCode: 'RU', latitude: 59.9311, longitude: 30.3609 },
+  { city: 'Salvador', countryCode: 'BR', latitude: -12.9777, longitude: -38.5016 },
+  { city: 'Salzburg', countryCode: 'AT', latitude: 47.8095, longitude: 13.055 },
+  { city: 'San Diego', countryCode: 'US', latitude: 32.7157, longitude: -117.1611 },
   { city: 'San Francisco', countryCode: 'US', latitude: 37.7749, longitude: -122.4194 },
+  { city: 'Santorini', countryCode: 'GR', latitude: 36.3932, longitude: 25.4615 },
   { city: 'São Paulo', countryCode: 'BR', latitude: -23.5505, longitude: -46.6333 },
+  { city: 'Sapporo', countryCode: 'JP', latitude: 43.0618, longitude: 141.3545 },
   { city: 'Seattle', countryCode: 'US', latitude: 47.6062, longitude: -122.3321 },
   { city: 'Seville', countryCode: 'ES', latitude: 37.3891, longitude: -5.9845 },
   { city: 'Shanghai', countryCode: 'CN', latitude: 31.2304, longitude: 121.4737 },
+  { city: 'Shenzhen', countryCode: 'CN', latitude: 22.5431, longitude: 114.0579 },
+  { city: 'Split', countryCode: 'HR', latitude: 43.5081, longitude: 16.4402 },
+  { city: 'Strasbourg', countryCode: 'FR', latitude: 48.5734, longitude: 7.7521 },
+  { city: 'Stuttgart', countryCode: 'DE', latitude: 48.7758, longitude: 9.1829 },
   { city: 'Sydney', countryCode: 'AU', latitude: -33.8688, longitude: 151.2093 },
   { city: 'Tel Aviv', countryCode: 'IL', latitude: 32.0853, longitude: 34.7818 },
+  { city: 'Thessaloniki', countryCode: 'GR', latitude: 40.6401, longitude: 22.9444 },
   { city: 'Toronto', countryCode: 'CA', latitude: 43.6532, longitude: -79.3832 },
+  { city: 'Toulouse', countryCode: 'FR', latitude: 43.6047, longitude: 1.4442 },
+  { city: 'Tulum', countryCode: 'MX', latitude: 20.2114, longitude: -87.4654 },
   { city: 'Turin', countryCode: 'IT', latitude: 45.0703, longitude: 7.6869 },
+  { city: 'Utrecht', countryCode: 'NL', latitude: 52.0907, longitude: 5.1214 },
   { city: 'Valencia', countryCode: 'ES', latitude: 39.4699, longitude: -0.3763 },
+  { city: 'Valparaíso', countryCode: 'CL', latitude: -33.0472, longitude: -71.6127 },
   { city: 'Vancouver', countryCode: 'CA', latitude: 49.2827, longitude: -123.1207 },
   { city: 'Venice', countryCode: 'IT', latitude: 45.4408, longitude: 12.3155 },
+  { city: 'Verona', countryCode: 'IT', latitude: 45.4384, longitude: 10.9916 },
+  { city: 'Wrocław', countryCode: 'PL', latitude: 51.1079, longitude: 17.0385 },
   { city: 'Zurich', countryCode: 'CH', latitude: 47.3769, longitude: 8.5417 },
 ];
 
@@ -453,6 +532,44 @@ export function searchCountries(query: string, limit: number = 8): CountryEntry[
   }
 
   return [...exactCode, ...prefixName, ...substringMatch].slice(0, limit);
+}
+
+/**
+ * Returns real cities with WGS84 coordinates for the requested ordered country codes,
+ * placing each country's capital first followed by its other major cities alphabetically.
+ * @param {readonly string[]} countryCodes - Ordered ISO alpha-2 country codes.
+ * @returns {CityCoordinateEntry[]} Deduplicated list of real cities in those countries.
+ */
+export function getCitiesForCountries(
+  countryCodes: readonly string[],
+): CityCoordinateEntry[] {
+  const orderedCodes = Array.from(
+    new Set(countryCodes.map((c) => c.trim().toUpperCase()).filter((c) => COUNTRY_BY_CODE.has(c))),
+  );
+  const result: CityCoordinateEntry[] = [];
+  const seen = new Set<string>();
+
+  for (const code of orderedCodes) {
+    const country = COUNTRY_BY_CODE.get(code);
+    const matches = GLOBAL_CITIES.filter((entry) => entry.countryCode === code);
+    const sorted = [...matches].sort((a, b) => {
+      const aIsCapital = country && normalizeGeoText(a.city) === normalizeGeoText(country.capital);
+      const bIsCapital = country && normalizeGeoText(b.city) === normalizeGeoText(country.capital);
+      if (aIsCapital && !bIsCapital) return -1;
+      if (!aIsCapital && bIsCapital) return 1;
+      return a.city.localeCompare(b.city);
+    });
+
+    for (const entry of sorted) {
+      const key = `${normalizeGeoText(entry.city)}::${entry.countryCode}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(entry);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
