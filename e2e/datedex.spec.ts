@@ -69,6 +69,28 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // 2. Log first connection ("Julia Vance", Milan IT) using the bottom-left '+' button
     await addBtn.click();
     await expect(page.getByRole('heading', { name: 'New Connection' })).toBeVisible();
+
+    // Verify New Connection modal renders as a tall comfortable mobile sheet (not a cramped sliver)
+    const editorDialog = page.getByTestId('pin-editor-dialog');
+    const editorScrollBody = page.getByTestId('pin-editor-scroll-body');
+    const editorHeader = page.getByTestId('pin-editor-header');
+    const editorFooter = page.getByTestId('pin-editor-footer');
+    const dialogBox = await editorDialog.boundingBox();
+    const scrollBox = await editorScrollBody.boundingBox();
+    const headerBox = await editorHeader.boundingBox();
+    const footerBox = await editorFooter.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(scrollBox).not.toBeNull();
+    expect(headerBox).not.toBeNull();
+    expect(footerBox).not.toBeNull();
+    // On 390x844 mobile viewport, 90dvh dialog should be ~760px tall with >=450px scrollable form area
+    expect(dialogBox?.height ?? 0).toBeGreaterThanOrEqual(650);
+    expect(dialogBox?.width ?? 0).toBeGreaterThanOrEqual(350);
+    expect(scrollBox?.height ?? 0).toBeGreaterThanOrEqual(450);
+    expect((footerBox?.y ?? 0) + (footerBox?.height ?? 0)).toBeLessThanOrEqual(844);
+    await expect(editorFooter.getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await expect(editorFooter.getByRole('button', { name: 'Save #1' })).toBeVisible();
+
     await expect(page.getByTestId('pin-section-2').getByRole('searchbox')).toHaveCount(0);
     await expect(page.getByTestId('zero-cloud-badge')).toContainText(
       'Stored on Device Only · Zero Cloud Upload',

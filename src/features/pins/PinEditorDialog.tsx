@@ -648,14 +648,15 @@ export function PinEditorDialog({
       ref={dialogRef}
       closedby="any"
       aria-labelledby="pin-editor-title"
-      className="dd-dialog"
+      data-testid="pin-editor-dialog"
+      className="dd-dialog h-[90dvh] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden sm:h-auto sm:max-h-[88dvh]"
     >
       {open && (
         <>
           {/* Top Header & Live Preview Strip */}
       <header
         data-testid="pin-editor-header"
-        className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#141927] px-5 py-4"
+        className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#141927] px-4 py-3.5 sm:px-5 sm:py-4"
       >
         <div className="flex min-w-0 items-center gap-3">
           {/* 1. Live Emoji Avatar Box (first uploaded image thumbnail or selected emoji fallback) */}
@@ -712,11 +713,11 @@ export function PinEditorDialog({
       <form
         onSubmit={(e) => void handleSubmit(e)}
         noValidate
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex min-h-0 flex-auto flex-col overflow-hidden"
       >
         <div
           data-testid="pin-editor-scroll-body"
-          className="flex-1 space-y-6 overflow-y-auto px-5 py-4"
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 pb-6 sm:flex-auto sm:space-y-6 sm:px-5"
         >
           {/* ==============================================================
               SECTION 1: Identity & Appearance
@@ -1876,7 +1877,7 @@ export function PinEditorDialog({
            ============================================================== */}
         <footer
           data-testid="pin-editor-footer"
-          className="flex shrink-0 items-center justify-between gap-2 border-t border-white/10 bg-[#141927] px-5 py-3.5"
+          className="flex shrink-0 items-center justify-between gap-2 border-t border-white/10 bg-[#141927] px-4 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-5"
         >
           {initialPin && onDelete ? (
             <button

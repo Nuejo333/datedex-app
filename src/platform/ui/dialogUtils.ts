@@ -60,17 +60,31 @@ export function useNativeModalDialog(
 
     dialog.addEventListener('close', handleClose);
 
-    // Fallback for browsers without native <dialog closedby="any">
+    // Fallback for browsers without native <dialog closedby="any">.
+    // Only dismiss when BOTH pointerdown and pointerup occur directly on the <dialog>
+    // outside its bounding box, so dragging/scrolling inside form fields or native <select>
+    // pickers never triggers accidental light-dismiss.
     let pressedOutside = false;
     const handlePointerDown = (event: PointerEvent): void => {
-      if (!allowLightDismiss) return;
-      pressedOutside = isPointerOutsideDialog(event, dialog);
+      if (!allowLightDismiss || !event.isPrimary) return;
+      pressedOutside = event.target === dialog && isPointerOutsideDialog(event, dialog);
     };
     const handlePointerUp = (event: PointerEvent): void => {
-      if (!allowLightDismiss) return;
-      if (pressedOutside && isPointerOutsideDialog(event, dialog) && dialog.open) {
+      if (!allowLightDismiss || !event.isPrimary) {
+        pressedOutside = false;
+        return;
+      }
+      if (
+        pressedOutside &&
+        event.target === dialog &&
+        isPointerOutsideDialog(event, dialog) &&
+        dialog.open
+      ) {
         dialog.close();
       }
+      pressedOutside = false;
+    };
+    const handlePointerCancel = (): void => {
       pressedOutside = false;
     };
 
@@ -78,6 +92,7 @@ export function useNativeModalDialog(
     if (needsClosedByFallback && allowLightDismiss) {
       dialog.addEventListener('pointerdown', handlePointerDown);
       dialog.addEventListener('pointerup', handlePointerUp);
+      dialog.addEventListener('pointercancel', handlePointerCancel);
     }
 
     return () => {
@@ -85,6 +100,7 @@ export function useNativeModalDialog(
       if (needsClosedByFallback && allowLightDismiss) {
         dialog.removeEventListener('pointerdown', handlePointerDown);
         dialog.removeEventListener('pointerup', handlePointerUp);
+        dialog.removeEventListener('pointercancel', handlePointerCancel);
       }
     };
   }, [dialogRef, onClose, allowLightDismiss]);

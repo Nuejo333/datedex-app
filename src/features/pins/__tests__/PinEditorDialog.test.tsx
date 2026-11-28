@@ -431,4 +431,69 @@ describe('PinEditorDialog', () => {
       firstIntimateDate: '2026-08-25',
     });
   });
+
+  it('uses a tall mobile modal sheet layout with fixed header/footer, scrollable body, and safe light-dismiss', () => {
+    const onClose = vi.fn();
+    render(
+      <LanguageProvider initialLocale="en">
+        <PinEditorDialog
+          open
+          initialPin={null}
+          droppedCoordinate={null}
+          nextEntryNumber={1}
+          onClose={onClose}
+          onSave={vi.fn().mockResolvedValue(undefined)}
+        />
+      </LanguageProvider>,
+    );
+
+    const dialog = screen.getByTestId('pin-editor-dialog') as HTMLDialogElement;
+    const header = screen.getByTestId('pin-editor-header');
+    const scrollBody = screen.getByTestId('pin-editor-scroll-body');
+    const footer = screen.getByTestId('pin-editor-footer');
+
+    // Tall responsive mobile sheet + capped desktop sizing
+    expect(dialog.className).toContain('h-[90dvh]');
+    expect(dialog.className).toContain('max-h-[92dvh]');
+    expect(dialog.className).toContain('w-[calc(100vw-1rem)]');
+    expect(dialog.className).toContain('max-w-2xl');
+    expect(dialog.className).toContain('sm:h-auto');
+    expect(dialog.className).toContain('sm:max-h-[88dvh]');
+    expect(dialog.className).toContain('overflow-hidden');
+
+    // Fixed header/footer + scrollable overscroll-contained body
+    expect(header.className).toContain('shrink-0');
+    expect(footer.className).toContain('shrink-0');
+    expect(scrollBody.className).toContain('flex-1');
+    expect(scrollBody.className).toContain('min-h-0');
+    expect(scrollBody.className).toContain('overflow-y-auto');
+    expect(scrollBody.className).toContain('overscroll-contain');
+    expect(scrollBody.className).toContain('pb-6');
+
+    // Dragging starting inside a form input and releasing outside must NOT dismiss the dialog
+    const nameInput = screen.getByLabelText('Name *');
+    vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
+      left: 10,
+      top: 40,
+      right: 380,
+      bottom: 800,
+      width: 370,
+      height: 760,
+      x: 10,
+      y: 40,
+      toJSON: () => ({}),
+    });
+    const closeSpy = vi.fn();
+    dialog.close = closeSpy;
+
+    fireEvent(
+      nameInput,
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 50, clientY: 120 }),
+    );
+    fireEvent(
+      dialog,
+      new MouseEvent('pointerup', { bubbles: true, clientX: 2, clientY: 10 }),
+    );
+    expect(closeSpy).not.toHaveBeenCalled();
+  });
 });
