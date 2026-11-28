@@ -46,6 +46,10 @@ describe('SettingsView', () => {
 
     render(<SettingsView {...buildProps({ onBack, onGoogleSignIn })} />);
 
+    const settingsPage = screen.getByTestId('settings-page');
+    expect(settingsPage.className).toContain('bg-black');
+    expect(settingsPage.className).not.toContain('bg-[#0b0d14]');
+
     await user.click(screen.getByRole('button', { name: 'Back to previous view' }));
     expect(onBack).toHaveBeenCalledTimes(1);
 

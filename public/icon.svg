@@ -1,13 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="112" fill="#0b0d14"/>
-  <rect x="24" y="24" width="464" height="464" rx="92" stroke="url(#g)" stroke-width="16"/>
-  <path d="M256 388s-124-76-124-166c0-42 32-76 74-76 24 0 42 12 50 28 8-16 26-28 50-28 42 0 74 34 74 76 0 90-124 166-124 166Z" fill="url(#g)"/>
-  <circle cx="256" cy="214" r="34" fill="#0b0d14"/>
-  <circle cx="256" cy="214" r="14" fill="#fbbf24"/>
-  <defs>
-    <linearGradient id="g" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f43f5e"/>
-      <stop offset="1" stop-color="#fbbf24"/>
-    </linearGradient>
-  </defs>
+  <rect width="512" height="512" rx="112" fill="#000000"/>
+  <rect x="24" y="24" width="464" height="464" rx="92" stroke="#ffffff" stroke-opacity="0.2" stroke-width="14"/>
+  <path d="M256 388s-124-76-124-166c0-42 32-76 74-76 24 0 42 12 50 28 8-16 26-28 50-28 42 0 74 34 74 76 0 90-124 166-124 166Z" fill="#dc2626"/>
+  <circle cx="256" cy="214" r="34" fill="#000000"/>
+  <circle cx="256" cy="214" r="14" fill="#ffffff"/>
 </svg>

@@ -47,10 +47,10 @@ export function HudStatsBar({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="text-base font-extrabold tracking-tight text-white">
-              Daté<span className="text-rose-400">dex</span>
+              Daté<span className="text-red-500">dex</span>
             </span>
             {isPro && (
-              <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-300 uppercase">
+              <span className="rounded-full border border-red-500/40 bg-red-600/20 px-2 py-0.5 text-[10px] font-bold tracking-wide text-red-400 uppercase">
                 PRO
               </span>
             )}
@@ -62,7 +62,7 @@ export function HudStatsBar({
               onClick={onOpenImport}
               aria-label={t('header.import')}
               title={t('header.importTitle')}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-[#111111] px-3 py-1 text-xs font-semibold text-neutral-200 transition hover:bg-white/10 hover:text-white"
             >
               <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
               {t('header.import')}
@@ -72,10 +72,11 @@ export function HudStatsBar({
               type="button"
               onClick={onToggleDiscreet}
               aria-pressed={discreetMode}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${discreetMode
-                  ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
-                  : 'bg-white/10 text-slate-200 hover:bg-white/15'
-                }`}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                discreetMode
+                  ? 'bg-white text-black ring-1 ring-white'
+                  : 'border border-white/15 bg-[#111111] text-neutral-200 hover:bg-white/10 hover:text-white'
+              }`}
             >
               {discreetMode ? (
                 <Shield className="h-3.5 w-3.5" aria-hidden="true" />
@@ -96,17 +97,18 @@ export function HudStatsBar({
                     })
                   : t('header.settingsAria')
               }
-              className={`relative rounded-full p-1.5 transition ${isSignedIn
-                  ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-500/30'
-                  : 'bg-white/10 text-slate-300 hover:bg-white/15 hover:text-white'
-                }`}
+              className={`relative rounded-full p-1.5 transition ${
+                isSignedIn
+                  ? 'bg-white/15 text-white ring-1 ring-white/40 hover:bg-white/20'
+                  : 'border border-white/15 bg-[#111111] text-neutral-300 hover:bg-white/10 hover:text-white'
+              }`}
             >
               <Settings className="h-3.5 w-3.5" aria-hidden="true" />
               {isSignedIn && (
                 <span
                   data-testid="settings-signed-in-indicator"
                   aria-hidden="true"
-                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-[#0b0d14]"
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-black"
                 />
               )}
             </button>
@@ -115,38 +117,38 @@ export function HudStatsBar({
 
         {!hideStats && (
           <div data-testid="hud-stats-grid" className="grid grid-cols-4 gap-2 text-center">
-            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
+            <div className="rounded-xl border border-white/15 bg-[#080808] px-2 py-1.5">
               <div className="text-sm font-bold text-white" data-testid="hud-dates">
                 {stats.totalDates}
               </div>
-              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+              <div className="text-[10px] font-medium tracking-wide text-neutral-400 uppercase">
                 {t('hud.dates')}
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-              <div className="text-sm font-bold text-rose-300" data-testid="hud-countries">
+            <div className="rounded-xl border border-white/15 bg-[#080808] px-2 py-1.5">
+              <div className="text-sm font-bold text-white" data-testid="hud-countries">
                 {stats.countriesCount}
               </div>
-              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+              <div className="text-[10px] font-medium tracking-wide text-neutral-400 uppercase">
                 {t('hud.countries')}
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-              <div className="text-sm font-bold text-amber-300" data-testid="hud-avg-rating">
+            <div className="rounded-xl border border-white/15 bg-[#080808] px-2 py-1.5">
+              <div className="text-sm font-bold text-red-400" data-testid="hud-avg-rating">
                 {stats.avgRating.toFixed(1)}
               </div>
-              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+              <div className="text-[10px] font-medium tracking-wide text-neutral-400 uppercase">
                 {t('hud.avgRating')}
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-[#121622] px-2 py-1.5">
-              <div className="text-sm font-bold text-emerald-300" data-testid="hud-dates2bed">
+            <div className="rounded-xl border border-white/15 bg-[#080808] px-2 py-1.5">
+              <div className="text-sm font-bold text-red-400" data-testid="hud-dates2bed">
                 {formatHudDates2Bed(stats.dates2BedPercent, discreetMode)}
               </div>
-              <div className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">
+              <div className="text-[10px] font-medium tracking-wide text-neutral-400 uppercase">
                 {t('hud.dates2Bed')}
               </div>
             </div>

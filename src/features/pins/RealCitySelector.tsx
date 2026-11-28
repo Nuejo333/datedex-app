@@ -151,7 +151,7 @@ export function RealCitySelector({
 
   return (
     <div data-testid={testId} className="space-y-1.5">
-      <label htmlFor={id} className="block text-xs font-medium text-slate-300">
+      <label htmlFor={id} className="block text-xs font-medium text-neutral-300">
         {label}
       </label>
       <select

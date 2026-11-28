@@ -76,31 +76,31 @@ export function RizzCoachPanel({
 
   if (!isAuthenticated || !isPro) {
     return (
-      <section className="space-y-4 rounded-2xl border border-amber-400/25 bg-gradient-to-b from-[#171b2b] to-[#121622] p-5">
+      <section className="space-y-4 rounded-2xl border border-red-500/35 bg-[#080808] p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-red-500/30 bg-red-600/15 text-red-400">
             <Crown className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-base font-bold text-white">{t('rizz.title')}</h2>
-            <p className="text-xs text-amber-300">{t('rizz.priceMeta')}</p>
+            <p className="text-xs text-red-400">{t('rizz.priceMeta')}</p>
           </div>
         </div>
 
-        <p className="text-xs leading-relaxed text-slate-300">{t('rizz.description')}</p>
+        <p className="text-xs leading-relaxed text-neutral-300">{t('rizz.description')}</p>
 
-        <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300">
+        <div className="rounded-xl border border-white/15 bg-[#111111] p-3 text-xs text-neutral-300">
           <p className="inline-flex items-center gap-1.5 font-semibold text-white">
-            <Lock className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
+            <Lock className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
             {t('rizz.serverVerified')}
           </p>
-          <p className="mt-1 text-[11px] text-slate-400">
+          <p className="mt-1 text-[11px] text-neutral-400">
             {isAuthenticated ? t('rizz.freeTierNote') : t('rizz.signedOutNote')}
           </p>
         </div>
 
         {errorMsg && (
-          <p role="alert" className="text-xs text-rose-300">
+          <p role="alert" className="text-xs text-red-400">
             {errorMsg}
           </p>
         )}
@@ -118,7 +118,7 @@ export function RizzCoachPanel({
                 )
                 .finally(() => setBusy(false));
             }}
-            className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-rose-500 px-4 py-3 text-sm font-bold text-slate-950 shadow-lg hover:brightness-110 disabled:opacity-60"
+            className="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500 disabled:opacity-60"
           >
             {busy ? t('rizz.openingCheckout') : t('rizz.unlockPro')}
           </button>
@@ -126,7 +126,7 @@ export function RizzCoachPanel({
           <button
             type="button"
             onClick={onGoToVaultAuth}
-            className="w-full rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15"
+            className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-neutral-200"
           >
             {t('rizz.signInToUpgrade')}
           </button>
@@ -137,16 +137,16 @@ export function RizzCoachPanel({
 
   return (
     <div className="space-y-4">
-      <section className="space-y-3 rounded-2xl border border-amber-400/25 bg-[#121622] p-4">
+      <section className="space-y-3 rounded-2xl border border-red-500/35 bg-[#080808] p-4">
         <div className="flex items-center justify-between">
           <h2 className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-            <Sparkles className="h-4 w-4 text-amber-300" aria-hidden="true" />
+            <Sparkles className="h-4 w-4 text-red-500" aria-hidden="true" />
             {t('rizz.activeTitle')}
           </h2>
           <button
             type="button"
             onClick={() => void onOpenBillingPortal()}
-            className="text-xs font-medium text-amber-300 hover:underline"
+            className="text-xs font-medium text-red-400 hover:underline"
           >
             {t('rizz.manageBilling')}
           </button>
@@ -154,7 +154,7 @@ export function RizzCoachPanel({
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-3">
           <div>
-            <label htmlFor="rizz-situation" className="mb-1 block text-xs font-medium text-slate-300">
+            <label htmlFor="rizz-situation" className="mb-1 block text-xs font-medium text-neutral-300">
               {t('rizz.situationLabel')}
             </label>
             <textarea
@@ -218,7 +218,7 @@ export function RizzCoachPanel({
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-4 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-60"
+            className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-red-500 disabled:opacity-60"
           >
             {busy ? t('rizz.crafting') : t('rizz.generate')}
           </button>
@@ -226,7 +226,7 @@ export function RizzCoachPanel({
       </section>
 
       {errorMsg && (
-        <p role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200">
+        <p role="alert" className="rounded-xl border border-red-500/50 bg-red-950/50 px-3 py-2 text-xs text-red-200">
           {errorMsg}
         </p>
       )}
@@ -236,10 +236,10 @@ export function RizzCoachPanel({
           {result.strategies.map((strategy, idx) => (
             <article
               key={`${strategy.title}-${idx}`}
-              className="space-y-2 rounded-2xl border border-white/10 bg-[#121622] p-4"
+              className="space-y-2 rounded-2xl border border-white/15 bg-[#080808] p-4"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-amber-300 uppercase">
+                <h3 className="text-xs font-bold text-red-400 uppercase">
                   {t('rizz.strategyLabel', { index: idx + 1, title: strategy.title })}
                 </h3>
                 <button
@@ -249,16 +249,16 @@ export function RizzCoachPanel({
                     setCopiedIdx(idx);
                     setTimeout(() => setCopiedIdx(null), 1500);
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] text-slate-200 hover:bg-white/15"
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-[#111111] px-2 py-1 text-[11px] text-neutral-200 hover:bg-white/10"
                 >
                   <Copy className="h-3 w-3" aria-hidden="true" />
                   {copiedIdx === idx ? t('rizz.copied') : t('rizz.copy')}
                 </button>
               </div>
-              <p className="rounded-xl bg-slate-900/70 p-3 text-sm text-white">
+              <p className="rounded-xl border border-white/10 bg-[#111111] p-3 text-sm text-white">
                 “{strategy.message}”
               </p>
-              <p className="text-[11px] text-slate-400">{strategy.rationale}</p>
+              <p className="text-[11px] text-neutral-400">{strategy.rationale}</p>
             </article>
           ))}
         </div>

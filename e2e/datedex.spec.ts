@@ -14,8 +14,9 @@ test.describe('Datédex Mobile PWA E2E', () => {
   }) => {
     await page.goto('/');
 
-    // 1. Signed-out launch opens directly on the Map tab with sticky top chrome & 3-item floating dock
+    // 1. Signed-out launch opens directly on the Map tab with pure-black theme, sticky top chrome & 3-item floating dock
     await expect(page.getByRole('heading', { name: 'Welcome to Datédex' })).toHaveCount(0);
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     const stickyTop = page.getByTestId('sticky-top-chrome');
     await expect(stickyTop.getByTestId('hud-dates')).toHaveText('0');
     await expect(stickyTop.getByTestId('ad-banner-slot')).toBeVisible();
@@ -59,6 +60,10 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // Floating '+' New Date button sits on the bottom-left with safe clearance above the floating dock
     const addBtn = page.getByRole('button', { name: 'Log new connection' });
     await expect(addBtn).toBeVisible();
+    await expect(addBtn).toHaveCSS(
+      'background-color',
+      /^(oklch\(0\.577 0\.245 27\.325\)|rgb\(220, 38, 38\))$/,
+    );
     const addBox = await addBtn.boundingBox();
     const dockBox = await floatingDock.boundingBox();
     expect(addBox).not.toBeNull();
@@ -70,8 +75,9 @@ test.describe('Datédex Mobile PWA E2E', () => {
     await addBtn.click();
     await expect(page.getByRole('heading', { name: 'New Connection' })).toBeVisible();
 
-    // Verify New Connection modal renders as a tall comfortable mobile sheet (not a cramped sliver)
+    // Verify New Connection modal renders as a tall comfortable pure-black mobile sheet (not a cramped sliver)
     const editorDialog = page.getByTestId('pin-editor-dialog');
+    await expect(editorDialog).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     const editorScrollBody = page.getByTestId('pin-editor-scroll-body');
     const editorHeader = page.getByTestId('pin-editor-header');
     const editorFooter = page.getByTestId('pin-editor-footer');
@@ -196,6 +202,7 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // 6. Settings pins Plan & Billing first (non-collapsible), supports collapsing other cards, and switches language
     await page.getByRole('button', { name: 'Account & Settings' }).click();
     await expect(page.getByTestId('settings-page')).toBeVisible();
+    await expect(page.getByTestId('settings-page')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     const firstSectionTestId = await page
       .locator('[data-testid="settings-page"] main > section')
       .first()
@@ -244,6 +251,7 @@ test.describe('Datédex Mobile PWA E2E', () => {
     // 8. Top-header Import button opens full-page Import screen with starter template & Back return
     await page.getByTestId('sticky-top-chrome').getByRole('button', { name: 'Import' }).click();
     await expect(page.getByTestId('import-page')).toBeVisible();
+    await expect(page.getByTestId('import-page')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
     await expect(page.getByRole('button', { name: 'Starter Template (.xlsx)' })).toBeVisible();
     await page.getByRole('button', { name: 'Back to previous view' }).click();
     await expect(page.getByTestId('import-page')).toHaveCount(0);

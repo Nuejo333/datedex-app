@@ -948,7 +948,7 @@ export function DatedexMap({
   return (
     <section
       aria-label={t('map.regionAria')}
-      className="relative h-[min(74dvh,640px)] min-h-[460px] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
+      className="relative h-[min(74dvh,640px)] min-h-[460px] w-full overflow-hidden rounded-2xl border border-white/15 bg-black"
     >
       {/* Mapbox GL JS v3 Canvas OR Graceful Monochrome Fallback when Token Missing */}
       {hasMapboxToken ? (
@@ -962,7 +962,7 @@ export function DatedexMap({
           data-testid="mapbox-missing-token-fallback"
           role="region"
           aria-label={t('map.fallbackAria')}
-          className="relative flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#1a1a1a_0%,#0a0a0a_58%,#050505_100%)]"
+          className="relative flex h-full w-full flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_45%,#171717_0%,#080808_58%,#000000_100%)]"
         >
           {/* Subtle grayscale globe graticule */}
           <div

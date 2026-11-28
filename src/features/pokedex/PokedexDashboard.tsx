@@ -146,13 +146,13 @@ export function PokedexDashboard({
     <div className="space-y-5">
       {/* World Coverage + Top Nationalities */}
       <section className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
+        <div className="rounded-2xl border border-white/15 bg-[#080808] p-4">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
-              <Globe className="h-4 w-4 text-rose-400" aria-hidden="true" />
+            <h2 className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-200 uppercase">
+              <Globe className="h-4 w-4 text-red-500" aria-hidden="true" />
               {t('pokedex.worldCoverage')}
             </h2>
-            <span className="text-sm font-bold text-rose-300">
+            <span className="text-sm font-bold text-red-400">
               {coverage.unlockedCount}/{coverage.totalCountries} ({coverage.percentage}%)
             </span>
           </div>
@@ -160,9 +160,9 @@ export function PokedexDashboard({
             max={coverage.totalCountries}
             value={coverage.unlockedCount}
             aria-label={t('pokedex.worldCoverageAria')}
-            className="h-2.5 w-full overflow-hidden rounded-full"
+            className="dd-progress h-2.5 w-full overflow-hidden rounded-full"
           />
-          <p className="mt-2 text-[11px] text-slate-400">
+          <p className="mt-2 text-[11px] text-neutral-400">
             {coverage.unlockedCount === 0
               ? t('pokedex.coverageEmpty')
               : coverage.unlockedCount === 1
@@ -171,20 +171,20 @@ export function PokedexDashboard({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#121622] p-4">
-          <h2 className="mb-2.5 text-xs font-semibold text-slate-200 uppercase">
+        <div className="rounded-2xl border border-white/15 bg-[#080808] p-4">
+          <h2 className="mb-2.5 text-xs font-semibold text-neutral-200 uppercase">
             {t('pokedex.topNationalities')}
           </h2>
           {topNationalities.length === 0 ? (
-            <p className="text-xs text-slate-400">{t('pokedex.noEntriesYet')}</p>
+            <p className="text-xs text-neutral-400">{t('pokedex.noEntriesYet')}</p>
           ) : (
             <ul className="space-y-1.5">
               {topNationalities.map((nat) => (
                 <li key={nat.code} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-200">
+                  <span className="text-neutral-200">
                     {nat.flag} {nat.name}
                   </span>
-                  <span className="font-mono text-slate-400">
+                  <span className="font-mono text-neutral-400">
                     {nat.count} • {nat.avgRating.toFixed(1)} / 10
                   </span>
                 </li>
@@ -195,9 +195,9 @@ export function PokedexDashboard({
       </section>
 
       {/* Achievement Badges (0–10 is the sole official rating scale; 1–5 star distribution removed) */}
-      <section className="rounded-2xl border border-white/10 bg-[#121622] p-4">
-        <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-200 uppercase">
-          <Award className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+      <section className="rounded-2xl border border-white/15 bg-[#080808] p-4">
+        <h2 className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-200 uppercase">
+          <Award className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
           {t('pokedex.achievementBadges')}
         </h2>
         <div className="flex flex-wrap gap-1.5">
@@ -211,8 +211,8 @@ export function PokedexDashboard({
                 title={badgeDesc}
                 className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium ${
                   badge.unlocked
-                    ? 'border-amber-400/40 bg-amber-400/15 text-amber-200'
-                    : 'border-white/10 bg-slate-900/60 text-slate-400'
+                    ? 'border-red-500/50 bg-red-600/20 text-white'
+                    : 'border-white/15 bg-[#111111] text-neutral-400'
                 }`}
               >
                 {badge.unlocked ? '✓ ' : ''}
@@ -224,10 +224,10 @@ export function PokedexDashboard({
       </section>
 
       {/* Search & Filters (including synchronized Birth / Living / Met City filters) */}
-      <section className="space-y-2.5 rounded-2xl border border-white/10 bg-[#121622] p-4">
+      <section className="space-y-2.5 rounded-2xl border border-white/15 bg-[#080808] p-4">
         <div className="relative">
           <Search
-            className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-slate-400"
+            className="pointer-events-none absolute top-2.5 left-3 h-4 w-4 text-neutral-400"
             aria-hidden="true"
           />
           <input
@@ -311,9 +311,9 @@ export function PokedexDashboard({
         {/* Synchronized City Filter Row: All Cities / Born in / Lives in / Met in */}
         <div
           data-testid="pokedex-city-filter"
-          className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5"
+          className="flex flex-wrap items-center gap-2 border-t border-white/15 pt-2.5"
         >
-          <MapPin className="h-3.5 w-3.5 shrink-0 text-sky-400" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-red-500" aria-hidden="true" />
           <select
             data-testid="pokedex-city-dimension"
             aria-label={t('cityFilter.dimensionAria')}
@@ -360,7 +360,7 @@ export function PokedexDashboard({
               data-testid="pokedex-city-filter-clear"
               aria-label={t('cityFilter.clearAria')}
               onClick={() => updateCityFilter(EMPTY_CITY_FILTER)}
-              className="inline-flex items-center gap-1 rounded-xl border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/15"
+              className="inline-flex items-center gap-1 rounded-xl border border-white/15 bg-[#111111] px-2.5 py-1.5 text-xs font-medium text-neutral-200 hover:bg-white/10 hover:text-white"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
               {t('cityFilter.clear')}
@@ -371,9 +371,9 @@ export function PokedexDashboard({
 
       {/* Cards Grid */}
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 bg-[#121622]/60 p-8 text-center">
-          <p className="text-sm font-medium text-slate-300">{t('pokedex.emptyTitle')}</p>
-          <p className="mt-1 text-xs text-slate-400">{t('pokedex.emptySubtitle')}</p>
+        <div className="rounded-2xl border border-dashed border-white/15 bg-[#080808] p-8 text-center">
+          <p className="text-sm font-medium text-neutral-200">{t('pokedex.emptyTitle')}</p>
+          <p className="mt-1 text-xs text-neutral-400">{t('pokedex.emptySubtitle')}</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2" data-testid="pokedex-cards">
@@ -392,7 +392,7 @@ export function PokedexDashboard({
                 type="button"
                 data-testid={`pokedex-card-${pin.id}`}
                 onClick={() => onSelectPin(pin)}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#121622] p-3.5 text-left transition hover:border-rose-400/40 hover:bg-[#171c2b]"
+                className="flex items-start gap-3 rounded-2xl border border-white/15 bg-[#080808] p-3.5 text-left transition hover:border-red-500/60 hover:bg-[#111111]"
               >
                 {display.displayPhotoUrl ? (
                   <img
@@ -401,9 +401,9 @@ export function PokedexDashboard({
                     className="h-16 w-16 shrink-0 rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-white/5 text-2xl">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#111111] text-2xl">
                     {display.isMasked ? (
-                      <Lock className="h-6 w-6 text-emerald-400" />
+                      <Lock className="h-6 w-6 text-red-500" />
                     ) : (
                       pin.avatarEmoji || flag
                     )}
@@ -415,7 +415,7 @@ export function PokedexDashboard({
                     <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-sm font-bold text-white">
                       <span
                         data-testid={`pokedex-card-number-${pin.id}`}
-                        className="shrink-0 rounded bg-amber-400/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-300"
+                        className="shrink-0 rounded border border-white/15 bg-[#111111] px-1.5 py-0.5 font-mono text-[10px] font-bold text-white"
                       >
                         #{pin.entryNumber}
                       </span>
@@ -424,12 +424,12 @@ export function PokedexDashboard({
                         {!display.isMasked && pin.age ? `, ${pin.age}` : ''}
                       </span>
                     </span>
-                    <span className="shrink-0 rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[11px] font-bold text-amber-300">
+                    <span className="shrink-0 rounded-md border border-red-500/40 bg-red-600/20 px-1.5 py-0.5 text-[11px] font-bold text-red-300">
                       {getPinTenScaleScore(pin).toFixed(1)} / 10
                     </span>
                   </div>
 
-                  <p className="truncate text-xs text-slate-300">
+                  <p className="truncate text-xs text-neutral-300">
                     {display.displayCity} • {pin.metChannel} •{' '}
                     {t(STATUS_TRANSLATION_KEY[pin.relationshipStatus])}
                   </p>
@@ -437,21 +437,21 @@ export function PokedexDashboard({
                   {/* Chronological Encounter Date + Intimacy Date strip */}
                   <div
                     data-testid={`pokedex-card-dates-${pin.id}`}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-neutral-300"
                   >
                     <span className="inline-flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-amber-400" aria-hidden="true" />
-                      <span className="text-slate-400">{t('pokedex.card.encounterDate')}:</span>{' '}
-                      <span className="font-mono text-slate-200">{encounterDateStr}</span>
+                      <Calendar className="h-3 w-3 text-neutral-300" aria-hidden="true" />
+                      <span className="text-neutral-400">{t('pokedex.card.encounterDate')}:</span>{' '}
+                      <span className="font-mono text-neutral-200">{encounterDateStr}</span>
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <Flame className="h-3 w-3 text-rose-400" aria-hidden="true" />
-                      <span className="text-slate-400">{t('pokedex.card.intimacyDate')}:</span>{' '}
-                      <span className="font-mono text-rose-200">{intimacyDateStr}</span>
+                      <Flame className="h-3 w-3 text-red-500" aria-hidden="true" />
+                      <span className="text-neutral-400">{t('pokedex.card.intimacyDate')}:</span>{' '}
+                      <span className="font-mono text-red-300">{intimacyDateStr}</span>
                     </span>
                   </div>
 
-                  <p className="line-clamp-2 text-[11px] text-slate-400">
+                  <p className="line-clamp-2 text-[11px] text-neutral-400">
                     {display.displayNotes || t('pokedex.noPrivateNotes')}
                   </p>
                 </div>

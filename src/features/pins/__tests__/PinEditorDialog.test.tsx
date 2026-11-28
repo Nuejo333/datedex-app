@@ -131,10 +131,12 @@ describe('PinEditorDialog', () => {
       Boolean(scrollBody.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
 
-    // Section 3 has text-amber-400 styling
-    expect(screen.getByRole('heading', { name: /3\. The Encounter/i }).className).toContain(
-      'text-amber-400',
-    );
+    // Section 3 and modal chrome follow the pure-black, white, and red theme (no amber/slate accents)
+    expect(header.className).toContain('bg-black');
+    expect(footer.className).toContain('bg-black');
+    const section3Heading = screen.getByRole('heading', { name: /3\. The Encounter/i });
+    expect(section3Heading.className).toContain('text-red-500');
+    expect(section3Heading.className).not.toContain('text-amber-400');
 
     // Pronoun adaptation: women -> her, men -> his, everyone -> their
     expect(screen.getByTestId('pin-editor-subtitle')).toHaveTextContent(/\bher\b/i);

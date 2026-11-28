@@ -130,9 +130,9 @@ export function VaultPanel({
   return (
     <div className="space-y-4">
       {/* Discreet & Vault Lock Controls */}
-      <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
+      <section className="space-y-3 rounded-2xl border border-white/15 bg-black p-4">
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+          <Shield className="h-4 w-4 text-red-500" aria-hidden="true" />
           <h2 className="text-sm font-bold text-white">{t('vault.controlsTitle')}</h2>
         </div>
 
@@ -141,10 +141,10 @@ export function VaultPanel({
             type="button"
             onClick={onToggleDiscreet}
             aria-pressed={vaultSettings.discreetMode}
-            className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
+            className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition ${
               vaultSettings.discreetMode
-                ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200'
-                : 'border-white/10 bg-slate-900/60 text-slate-200'
+                ? 'border-white bg-white text-black'
+                : 'border-white/15 bg-[#111111] text-neutral-200 hover:bg-white/10'
             }`}
           >
             <span>{t('vault.toggleLabel')}</span>
@@ -152,8 +152,8 @@ export function VaultPanel({
           </button>
         </div>
 
-        <div className="space-y-1.5 border-t border-white/10 pt-3">
-          <label htmlFor="vault-pass-update" className="block text-xs font-medium text-slate-300">
+        <div className="space-y-1.5 border-t border-white/15 pt-3">
+          <label htmlFor="vault-pass-update" className="block text-xs font-medium text-neutral-300">
             {vaultSettings.hasPassphraseLock
               ? t('vault.updatePassphraseLabel')
               : t('vault.setPassphraseLabel')}
@@ -185,7 +185,7 @@ export function VaultPanel({
                     setErrorMsg(e instanceof Error ? e.message : t('vault.passphraseError')),
                   );
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#111111] px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"
             >
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               {t('common.save')}
@@ -195,9 +195,9 @@ export function VaultPanel({
       </section>
 
       {/* Offline Data Risk Notice + Encrypted JSON Backup */}
-      <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
+      <section className="space-y-3 rounded-2xl border border-white/15 bg-black p-4">
+        <div className="flex items-start gap-2.5 rounded-xl border border-white/20 bg-[#111111] p-3 text-xs text-neutral-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
           <p>
             <strong>{t('vault.offlineNoticeTitle')}</strong> {t('vault.offlineNoticeBefore')}{' '}
             <strong>{t('vault.offlineNoticeBold')}</strong> {t('vault.offlineNoticeAfter')}
@@ -205,7 +205,7 @@ export function VaultPanel({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2 rounded-xl border border-white/10 bg-slate-900/50 p-3">
+          <div className="space-y-2 rounded-xl border border-white/15 bg-[#111111] p-3">
             <h3 className="text-xs font-semibold text-white">{t('vault.exportTitle')}</h3>
             <input
               type="password"
@@ -219,16 +219,16 @@ export function VaultPanel({
               type="button"
               disabled={busy || backupPassphrase.trim().length < 6}
               onClick={() => void handleExport()}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-500 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               {t('vault.exportBtn')}
             </button>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-white/10 bg-slate-900/50 p-3">
+          <div className="space-y-2 rounded-xl border border-white/15 bg-[#111111] p-3">
             <h3 className="text-xs font-semibold text-white">{t('vault.restoreTitle')}</h3>
-            <label className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10">
+            <label className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-black px-3 py-2 text-xs font-semibold text-neutral-200 hover:bg-white/10 hover:text-white">
               <Upload className="h-3.5 w-3.5" aria-hidden="true" />
               {t('vault.selectBackup')}
               <input
@@ -252,7 +252,7 @@ export function VaultPanel({
                   type="button"
                   disabled={busy || !restorePassphrase}
                   onClick={() => void handleRestoreSubmit()}
-                  className="w-full rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"
+                  className="w-full rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black hover:bg-neutral-200 disabled:opacity-50"
                 >
                   {t('vault.decryptRestoreBtn')}
                 </button>
@@ -263,24 +263,24 @@ export function VaultPanel({
       </section>
 
       {/* Optional Supabase Passwordless Cloud Sync */}
-      <section className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-4">
+      <section className="space-y-3 rounded-2xl border border-white/15 bg-black p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Cloud className="h-4 w-4 text-sky-400" aria-hidden="true" />
+            <Cloud className="h-4 w-4 text-white" aria-hidden="true" />
             <h2 className="text-sm font-bold text-white">{t('vault.cloudSyncTitle')}</h2>
           </div>
           {signedInEmail && (
-            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300">
+            <span className="rounded-full border border-white/25 bg-[#111111] px-2.5 py-0.5 text-[11px] font-medium text-white">
               {signedInEmail}
             </span>
           )}
         </div>
 
         {!supabaseConfigured ? (
-          <p className="text-xs text-slate-400">{t('vault.localOnlyNotice')}</p>
+          <p className="text-xs text-neutral-400">{t('vault.localOnlyNotice')}</p>
         ) : signedInEmail ? (
           <div className="space-y-3">
-            <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-200">
+            <label className="flex cursor-pointer items-center gap-2.5 text-xs text-neutral-200">
               <input
                 type="checkbox"
                 checked={syncPhotos}
@@ -304,7 +304,7 @@ export function VaultPanel({
                     )
                     .finally(() => setBusy(false));
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500 px-3.5 py-2 text-xs font-semibold text-slate-950 hover:bg-sky-400"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold text-black transition hover:bg-neutral-200"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('vault.syncPinsBtn')}
@@ -314,7 +314,7 @@ export function VaultPanel({
                 <button
                   type="button"
                   onClick={() => void onSignOut()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-[#111111] px-3.5 py-2 text-xs font-medium text-neutral-200 hover:bg-white/10"
                 >
                   <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                   {t('settings.account.signOut')}
@@ -323,10 +323,10 @@ export function VaultPanel({
             </div>
           </div>
         ) : embeddedInSettings ? (
-          <p className="text-xs text-slate-400">{t('vault.signInAboveSync')}</p>
+          <p className="text-xs text-neutral-400">{t('vault.signInAboveSync')}</p>
         ) : (
           <div className="space-y-2.5">
-            <p className="text-xs text-slate-400">{t('vault.passwordlessNote')}</p>
+            <p className="text-xs text-neutral-400">{t('vault.passwordlessNote')}</p>
             <button
               type="button"
               onClick={() =>
@@ -334,7 +334,7 @@ export function VaultPanel({
                   setErrorMsg(e instanceof Error ? e.message : t('settings.account.googleError')),
                 )
               }
-              className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
+              className="w-full rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-neutral-200"
             >
               {t('vault.signInGoogleOAuth')}
             </button>
@@ -357,7 +357,7 @@ export function VaultPanel({
                       setErrorMsg(e instanceof Error ? e.message : t('vault.magicLinkFailed')),
                     )
                 }
-                className="inline-flex items-center gap-1 rounded-xl bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50"
               >
                 <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                 {t('vault.magicLinkBtn')}
@@ -368,12 +368,12 @@ export function VaultPanel({
       </section>
 
       {feedback && (
-        <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-2.5 text-xs text-emerald-200">
+        <p className="rounded-xl border border-white/25 bg-[#111111] px-3.5 py-2.5 text-xs text-white">
           {feedback}
         </p>
       )}
       {errorMsg && (
-        <p role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200">
+        <p role="alert" className="rounded-xl border border-red-500/50 bg-red-950/50 px-3.5 py-2.5 text-xs text-red-200">
           {errorMsg}
         </p>
       )}

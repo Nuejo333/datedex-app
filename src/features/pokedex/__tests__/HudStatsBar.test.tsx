@@ -72,7 +72,10 @@ describe('HudStatsBar', () => {
 
     const settingsBtn = screen.getByRole('button', { name: 'Account & Settings (Signed in)' });
     expect(settingsBtn).toHaveAttribute('title', 'Account & Settings (alex@example.com)');
-    expect(screen.getByTestId('settings-signed-in-indicator')).toBeInTheDocument();
+    const indicator = screen.getByTestId('settings-signed-in-indicator');
+    expect(indicator).toBeInTheDocument();
+    expect(indicator.className).toContain('bg-red-500');
+    expect(indicator.className).toContain('ring-black');
     expect(screen.getByTestId('hud-stats-grid')).toBeInTheDocument();
   });
 

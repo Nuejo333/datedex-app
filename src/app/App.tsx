@@ -499,7 +499,7 @@ function AppShell(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center text-sm text-slate-400">
+      <div className="flex min-h-dvh items-center justify-center bg-black text-sm text-neutral-400">
         {t('app.unlocking')}
       </div>
     );
@@ -631,11 +631,11 @@ function AppShell(): React.JSX.Element {
   ];
 
   return (
-    <div className="min-h-dvh bg-[#0b0d14] text-slate-100">
+    <div className="min-h-dvh bg-black text-white">
       {/* Persistently anchored top header, 4-card stats bar, and Sponsored banner */}
       <div
         data-testid="sticky-top-chrome"
-        className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 backdrop-blur-md"
+        className="sticky top-0 z-30 border-b border-white/15 bg-black/95 backdrop-blur-md"
       >
         <HudStatsBar
           stats={hudStats}
@@ -691,7 +691,7 @@ function AppShell(): React.JSX.Element {
           <div className="space-y-4">
             <Suspense
               fallback={
-                <div className="flex h-[min(74dvh,640px)] min-h-[460px] items-center justify-center rounded-2xl border border-white/10 bg-[#050505] text-xs text-neutral-400">
+                <div className="flex h-[min(74dvh,640px)] min-h-[460px] items-center justify-center rounded-2xl border border-white/15 bg-black text-xs text-neutral-400">
                   {t('app.loadingGlobe')}
                 </div>
               }
@@ -758,16 +758,16 @@ function AppShell(): React.JSX.Element {
           setDroppedCoord(null);
           setEditorOpen(true);
         }}
-        className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-500 text-white shadow-xl shadow-rose-500/30 transition hover:scale-105"
+        className="fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] left-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-xl shadow-red-600/30 ring-1 ring-white/15 transition hover:scale-105 hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </button>
 
-      {/* Floating Glassmorphic Pill Bottom Navigation Dock */}
+      {/* Floating Monochrome Pill Bottom Navigation Dock */}
       <nav
         aria-label={t('app.primaryNavAria')}
         data-testid="floating-dock"
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-[#121622]/75 p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/5 backdrop-blur-xl"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-[#080808]/90 p-1.5 shadow-2xl shadow-black/80 ring-1 ring-white/5 backdrop-blur-xl"
       >
         <div className="flex items-center gap-1">
           {navItems.map((item) => {
@@ -781,8 +781,8 @@ function AppShell(): React.JSX.Element {
                 aria-current={isActive ? 'page' : undefined}
                 className={`inline-flex min-w-[78px] flex-col items-center justify-center gap-0.5 rounded-full px-3.5 py-1.5 text-[11px] font-medium transition ${
                   isActive
-                    ? 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/30'
-                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    ? 'bg-red-600/20 text-white ring-1 ring-red-500/60'
+                    : 'text-neutral-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />

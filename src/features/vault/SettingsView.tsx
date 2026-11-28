@@ -92,7 +92,7 @@ function CollapsibleCardHeader({
           <h2 id={headingId} className="text-sm font-bold text-white">
             {title}
           </h2>
-          <p className="text-xs text-slate-400">{subtitle}</p>
+          <p className="text-xs text-neutral-400">{subtitle}</p>
         </div>
       </div>
 
@@ -102,7 +102,7 @@ function CollapsibleCardHeader({
         aria-controls={panelId}
         aria-label={toggleAriaLabel}
         onClick={onToggle}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-300 transition hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-[#111111] text-neutral-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
       >
         <ChevronDown
           className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
@@ -281,15 +281,15 @@ export function SettingsView({
         : t('settings.privacy.cachePlural', { count: localPinCount });
 
   return (
-    <div data-testid="settings-page" className="min-h-dvh bg-[#0b0d14] text-slate-100">
+    <div data-testid="settings-page" className="min-h-dvh bg-black text-white">
       {/* Sticky Full-Page Header */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-white/15 bg-black/95 px-4 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <button
             type="button"
             onClick={onBack}
             aria-label={t('common.backAria')}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:bg-white/15 hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-[#111111] px-3 py-1.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10 hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             {t('common.back')}
@@ -300,8 +300,8 @@ export function SettingsView({
           <span
             className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
               signedInEmail
-                ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30'
-                : 'bg-white/10 text-slate-300'
+                ? 'bg-white text-black'
+                : 'border border-white/15 bg-[#111111] text-neutral-300'
             }`}
           >
             {signedInEmail ? t('settings.signedIn') : t('settings.signedOut')}
@@ -314,18 +314,18 @@ export function SettingsView({
         <section
           aria-labelledby="settings-billing-heading"
           data-testid="plan-billing-section"
-          className="space-y-3 rounded-2xl border border-amber-400/20 bg-[#121622] p-5"
+          className="space-y-3 rounded-2xl border border-red-500/35 bg-[#080808] p-5"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-600/15 text-red-400">
                 <Crown className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
                 <h2 id="settings-billing-heading" className="text-sm font-bold text-white">
                   {t('settings.billing.title')}
                 </h2>
-                <p className="text-xs text-slate-400">{t('settings.billing.subtitle')}</p>
+                <p className="text-xs text-neutral-400">{t('settings.billing.subtitle')}</p>
               </div>
             </div>
 
@@ -333,8 +333,8 @@ export function SettingsView({
               data-testid="account-tier-badge"
               className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide ${
                 isPro
-                  ? 'bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/30'
-                  : 'bg-white/10 text-slate-200'
+                  ? 'border border-red-500/40 bg-red-600/20 text-red-300'
+                  : 'border border-white/15 bg-[#111111] text-neutral-200'
               }`}
             >
               {isPro && <Crown className="h-3 w-3" aria-hidden="true" />}
@@ -342,8 +342,8 @@ export function SettingsView({
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
-            <p className="max-w-md text-xs text-slate-300">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 bg-[#111111] p-4">
+            <p className="max-w-md text-xs text-neutral-300">
               {isPro ? t('settings.billing.proCopy') : t('settings.billing.freeCopy')}
             </p>
 
@@ -354,8 +354,8 @@ export function SettingsView({
                 onClick={() => void handleBillingAction()}
                 className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition disabled:opacity-50 ${
                   isPro
-                    ? 'border border-white/15 bg-white/10 text-white hover:bg-white/15'
-                    : 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg shadow-rose-500/20 hover:brightness-110'
+                    ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
+                    : 'bg-red-600 text-white shadow-lg shadow-red-600/20 hover:bg-red-500'
                 }`}
               >
                 {busyAction === 'billing' ? (
@@ -372,7 +372,7 @@ export function SettingsView({
                     : t('settings.billing.upgrade')}
               </button>
             ) : (
-              <span className="text-[11px] font-medium text-amber-300">
+              <span className="text-[11px] font-medium text-red-400">
                 {t('settings.billing.signInPrompt')}
               </span>
             )}
@@ -381,7 +381,7 @@ export function SettingsView({
           {billingError && (
             <p
               role="alert"
-              className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+              className="rounded-xl border border-red-500/50 bg-red-950/50 px-3.5 py-2.5 text-xs text-red-200"
             >
               {billingError}
             </p>
@@ -392,13 +392,13 @@ export function SettingsView({
         <section
           aria-labelledby="settings-language-heading"
           data-testid="language-section"
-          className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-5"
         >
           <CollapsibleCardHeader
             headingId="settings-language-heading"
             panelId="settings-language-panel"
             icon={<Globe className="h-4 w-4" aria-hidden="true" />}
-            iconBgClass="bg-indigo-500/15 text-indigo-300"
+            iconBgClass="border border-white/15 bg-[#111111] text-white"
             title={t('settings.language.title')}
             subtitle={t('settings.language.subtitle')}
             expanded={expandedSections.language}
@@ -428,12 +428,12 @@ export function SettingsView({
                     onClick={() => setLocale(option.code)}
                     className={`flex flex-col items-center justify-center rounded-xl border px-3 py-2.5 text-xs font-semibold transition ${
                       selected
-                        ? 'border-rose-400/60 bg-rose-500/15 text-white ring-1 ring-rose-400/40'
-                        : 'border-white/10 bg-slate-900/60 text-slate-300 hover:bg-white/10 hover:text-white'
+                        ? 'border-red-500/60 bg-red-600/20 text-white ring-1 ring-red-500/40'
+                        : 'border-white/15 bg-[#111111] text-neutral-300 hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     <span>{option.nativeLabel}</span>
-                    <span className="mt-0.5 text-[10px] font-medium text-slate-400 uppercase">
+                    <span className="mt-0.5 text-[10px] font-medium text-neutral-400 uppercase">
                       {option.code}
                     </span>
                   </button>
@@ -447,13 +447,13 @@ export function SettingsView({
         <section
           aria-labelledby="settings-account-heading"
           data-testid="account-auth-section"
-          className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-5"
         >
           <CollapsibleCardHeader
             headingId="settings-account-heading"
             panelId="settings-account-panel"
             icon={<UserCheck className="h-4 w-4" aria-hidden="true" />}
-            iconBgClass="bg-rose-500/15 text-rose-400"
+            iconBgClass="border border-red-500/30 bg-red-600/15 text-red-400"
             title={t('settings.account.title')}
             subtitle={t('settings.account.subtitle')}
             expanded={expandedSections.account}
@@ -467,9 +467,9 @@ export function SettingsView({
             <div id="settings-account-panel" data-testid="account-auth-section-body">
               {signedInEmail ? (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/25 bg-[#111111] p-4">
                     <div className="min-w-0 space-y-0.5">
-                      <p className="text-[11px] font-semibold tracking-wide text-emerald-300 uppercase">
+                      <p className="text-[11px] font-semibold tracking-wide text-red-400 uppercase">
                         {t('settings.account.activeAccount')}
                       </p>
                       <p
@@ -478,8 +478,8 @@ export function SettingsView({
                       >
                         {signedInEmail}
                       </p>
-                      <p className="inline-flex items-center gap-1.5 text-xs text-slate-300">
-                        <Cloud className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+                      <p className="inline-flex items-center gap-1.5 text-xs text-neutral-300">
+                        <Cloud className="h-3.5 w-3.5 text-white" aria-hidden="true" />
                         {t('settings.account.cloudSyncEnabled')}
                       </p>
                     </div>
@@ -488,7 +488,7 @@ export function SettingsView({
                       type="button"
                       disabled={isBusy}
                       onClick={() => void handleSignOutClick()}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/25 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-600/15 px-4 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-600/25 disabled:opacity-50"
                     >
                       {busyAction === 'signout' ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -504,7 +504,7 @@ export function SettingsView({
                   {authError && (
                     <p
                       role="alert"
-                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                      className="rounded-xl border border-red-500/50 bg-red-950/50 px-3.5 py-2.5 text-xs text-red-200"
                     >
                       {authError}
                     </p>
@@ -513,9 +513,9 @@ export function SettingsView({
               ) : (
                 <div className="space-y-4">
                   {!supabaseConfigured && (
-                    <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">
+                    <div className="flex items-start gap-2.5 rounded-xl border border-white/20 bg-[#111111] p-3 text-xs text-neutral-200">
                       <CloudOff
-                        className="mt-0.5 h-4 w-4 shrink-0 text-amber-400"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-red-400"
                         aria-hidden="true"
                       />
                       <p>{t('settings.account.offlineNotice')}</p>
@@ -526,7 +526,7 @@ export function SettingsView({
                     type="button"
                     disabled={!supabaseConfigured || isBusy}
                     onClick={() => void handleGoogleClick()}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busyAction === 'google' && (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -536,10 +536,10 @@ export function SettingsView({
                       : t('settings.account.continueGoogle')}
                   </button>
 
-                  <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                    <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                  <div className="flex items-center gap-3 text-[11px] text-neutral-400">
+                    <span className="h-px flex-1 bg-white/15" aria-hidden="true" />
                     <span>{t('settings.account.orEmail')}</span>
-                    <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                    <span className="h-px flex-1 bg-white/15" aria-hidden="true" />
                   </div>
 
                   <form
@@ -550,12 +550,12 @@ export function SettingsView({
                     <div className="space-y-1">
                       <label
                         htmlFor="settings-magic-email"
-                        className="block text-xs font-medium text-slate-200"
+                        className="block text-xs font-medium text-neutral-200"
                       >
                         {t('settings.account.emailLabel')}
                       </label>
                       {/* Format hint placed above the input so autofill popovers do not obscure it */}
-                      <span id="settings-email-hint" className="block text-[11px] text-slate-400">
+                      <span id="settings-email-hint" className="block text-[11px] text-neutral-400">
                         {t('settings.account.emailHint')}
                       </span>
                       <input
@@ -592,7 +592,7 @@ export function SettingsView({
                         className={`dd-input text-xs ${showEmailError ? 'user-invalid-fallback' : ''}`}
                       />
                       {showEmailError && (
-                        <p id="settings-email-error" className="mt-1 text-xs text-rose-300">
+                        <p id="settings-email-error" className="mt-1 text-xs text-red-400">
                           {emailError}
                         </p>
                       )}
@@ -601,7 +601,7 @@ export function SettingsView({
                     <button
                       type="submit"
                       disabled={!supabaseConfigured || isBusy}
-                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {busyAction === 'magic' ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -617,10 +617,10 @@ export function SettingsView({
                   {magicLinkSentTo && (
                     <div
                       role="status"
-                      className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-2.5 text-xs text-emerald-200"
+                      className="flex items-start gap-2 rounded-xl border border-white/25 bg-[#111111] px-3.5 py-2.5 text-xs text-white"
                     >
                       <CheckCircle2
-                        className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-red-500"
                         aria-hidden="true"
                       />
                       <p>
@@ -634,7 +634,7 @@ export function SettingsView({
                   {authError && (
                     <p
                       role="alert"
-                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                      className="rounded-xl border border-red-500/50 bg-red-950/50 px-3.5 py-2.5 text-xs text-red-200"
                     >
                       {authError}
                     </p>
@@ -649,13 +649,13 @@ export function SettingsView({
         <section
           aria-labelledby="settings-connected-heading"
           data-testid="connected-accounts-section"
-          className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          className="space-y-3 rounded-2xl border border-white/15 bg-[#080808] p-5"
         >
           <CollapsibleCardHeader
             headingId="settings-connected-heading"
             panelId="settings-connected-panel"
             icon={<Link2 className="h-4 w-4" aria-hidden="true" />}
-            iconBgClass="bg-sky-500/15 text-sky-400"
+            iconBgClass="border border-white/15 bg-[#111111] text-white"
             title={t('settings.connected.title')}
             subtitle={t('settings.connected.subtitle')}
             expanded={expandedSections.connected}
@@ -668,13 +668,13 @@ export function SettingsView({
           {expandedSections.connected && (
             <div id="settings-connected-panel" data-testid="connected-accounts-section-body">
               {signedInEmail ? (
-                <div className="space-y-3 rounded-xl border border-white/10 bg-slate-900/60 p-4">
+                <div className="space-y-3 rounded-xl border border-white/15 bg-[#111111] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold text-white">
                         {t('settings.connected.googleTitle')}
                       </p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-neutral-400">
                         {isGooglePaired
                           ? t('settings.connected.googlePairedDesc')
                           : t('settings.connected.googleUnpairedDesc')}
@@ -682,14 +682,14 @@ export function SettingsView({
                     </div>
 
                     {identitiesLoading ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-neutral-400">
                         <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                         {t('common.checking')}
                       </span>
                     ) : isGooglePaired ? (
                       <span
                         data-testid="google-connected-badge"
-                        className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30"
+                        className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-black"
                       >
                         <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                         {t('settings.connected.googleConnectedBadge')}
@@ -699,7 +699,7 @@ export function SettingsView({
                         type="button"
                         disabled={!supabaseConfigured || isBusy || identitiesLoading}
                         onClick={() => void handleLinkGoogleClick()}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {busyAction === 'link' ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -716,14 +716,14 @@ export function SettingsView({
                   {linkingError && (
                     <p
                       role="alert"
-                      className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-200"
+                      className="rounded-xl border border-red-500/50 bg-red-950/50 px-3.5 py-2.5 text-xs text-red-200"
                     >
                       {linkingError}
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="rounded-xl border border-white/10 bg-slate-900/50 p-3.5 text-xs text-slate-400">
+                <p className="rounded-xl border border-white/15 bg-[#111111] p-3.5 text-xs text-neutral-400">
                   {t('settings.connected.signedOutNote')}
                 </p>
               )}
@@ -735,13 +735,13 @@ export function SettingsView({
         <section
           aria-labelledby="settings-privacy-heading"
           data-testid="privacy-preferences-section"
-          className="space-y-3 rounded-2xl border border-white/10 bg-[#121622] p-5"
+          className="space-y-3 rounded-2xl border border-white/15 bg-[#080808] p-5"
         >
           <CollapsibleCardHeader
             headingId="settings-privacy-heading"
             panelId="settings-privacy-panel"
             icon={<Shield className="h-4 w-4" aria-hidden="true" />}
-            iconBgClass="bg-emerald-500/15 text-emerald-400"
+            iconBgClass="border border-white/15 bg-[#111111] text-white"
             title={t('settings.privacy.title')}
             subtitle={t('settings.privacy.subtitle')}
             expanded={expandedSections.privacy}
@@ -755,14 +755,14 @@ export function SettingsView({
             <div
               id="settings-privacy-panel"
               data-testid="privacy-preferences-section-body"
-              className="divide-y divide-white/10 rounded-xl border border-white/10 bg-slate-900/60"
+              className="divide-y divide-white/15 rounded-xl border border-white/15 bg-[#111111]"
             >
               <div className="flex items-center justify-between gap-3 p-4">
                 <div className="space-y-0.5">
                   <p className="text-xs font-semibold text-white">
                     {t('settings.privacy.discreetTitle')}
                   </p>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-neutral-400">
                     {t('settings.privacy.discreetDesc')}
                     {hasPassphraseLock ? t('settings.privacy.passphraseProtectedSuffix') : '.'}
                   </p>
@@ -774,8 +774,8 @@ export function SettingsView({
                   onClick={onToggleDiscreet}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                     discreetMode
-                      ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40'
-                      : 'bg-white/10 text-slate-200 hover:bg-white/15'
+                      ? 'bg-white text-black ring-1 ring-white'
+                      : 'border border-white/15 bg-black text-neutral-200 hover:bg-white/10'
                   }`}
                 >
                   {discreetMode ? (
@@ -790,19 +790,19 @@ export function SettingsView({
               <div className="flex items-center justify-between gap-3 p-4">
                 <div className="flex items-start gap-2.5">
                   <Database
-                    className="mt-0.5 h-4 w-4 shrink-0 text-slate-400"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400"
                     aria-hidden="true"
                   />
                   <div className="space-y-0.5">
                     <p className="text-xs font-semibold text-white">
                       {t('settings.privacy.localCacheTitle')}
                     </p>
-                    <p data-testid="local-cache-status" className="text-[11px] text-slate-400">
+                    <p data-testid="local-cache-status" className="text-[11px] text-neutral-400">
                       {localCacheText}
                     </p>
                   </div>
                 </div>
-                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-300">
+                <span className="shrink-0 rounded-full border border-white/15 bg-black px-2.5 py-0.5 text-[11px] font-medium text-neutral-300">
                   {signedInEmail
                     ? t('settings.privacy.syncedBadge')
                     : t('settings.privacy.localOnlyBadge')}
@@ -817,13 +817,13 @@ export function SettingsView({
           <section
             aria-labelledby="settings-vault-heading"
             data-testid="settings-vault-section"
-            className="space-y-4 rounded-2xl border border-white/10 bg-[#121622] p-5"
+            className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-5"
           >
             <CollapsibleCardHeader
               headingId="settings-vault-heading"
               panelId="settings-vault-panel"
               icon={<Lock className="h-4 w-4" aria-hidden="true" />}
-              iconBgClass="bg-emerald-500/15 text-emerald-400"
+              iconBgClass="border border-white/15 bg-[#111111] text-white"
               title={t('settings.vault.title')}
               subtitle={t('settings.vault.subtitle')}
               expanded={expandedSections.vault}

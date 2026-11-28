@@ -53,24 +53,24 @@ export function VaultLockDialog({
       aria-labelledby="vault-unlock-title"
       className="dd-dialog"
     >
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-white/15 bg-black px-5 py-4">
         <h1 id="vault-unlock-title" className="inline-flex items-center gap-2 text-sm font-bold text-white">
-          <Lock className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+          <Lock className="h-4 w-4 text-red-500" aria-hidden="true" />
           {t('vault.lockDialogTitle')}
         </h1>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
           aria-label={t('vault.lockDialogCloseAria')}
-          className="rounded-lg p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+          className="rounded-lg p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-5">
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 bg-black p-5">
         <div>
-          <label htmlFor="vault-unlock-input" className="mb-1 block text-xs font-medium text-slate-300">
+          <label htmlFor="vault-unlock-input" className="mb-1 block text-xs font-medium text-neutral-300">
             {t('vault.lockDialogPrompt')}
           </label>
           <input
@@ -85,7 +85,7 @@ export function VaultLockDialog({
         </div>
 
         {errorMsg && (
-          <p role="alert" className="text-xs text-rose-300">
+          <p role="alert" className="text-xs text-red-400">
             {errorMsg}
           </p>
         )}
@@ -94,13 +94,13 @@ export function VaultLockDialog({
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
-            className="rounded-xl border border-white/15 px-4 py-2 text-xs text-slate-300"
+            className="rounded-xl border border-white/15 bg-[#111111] px-4 py-2 text-xs text-neutral-200 hover:bg-white/10 hover:text-white"
           >
             {t('vault.lockDialogKeepLocked')}
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950"
+            className="rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-500"
           >
             {t('vault.lockDialogUnlock')}
           </button>

@@ -1,18 +1,43 @@
 /**
  * @module styles/index
- * Global Tailwind CSS v4 styles, dark color-scheme tokens, native dialog top-layer rules,
- * post-interaction validation styles, and brand-consistent native form controls.
+ * Global Tailwind CSS v4 styles, pure-black monochrome + red color-scheme tokens,
+ * native dialog top-layer rules, post-interaction validation styles, Forced Colors
+ * fallbacks, and brand-consistent native form controls.
+ *
+ * Palette Architecture (Pure Black, White & Red):
+ * - Canvas background: `#000000` (pure black across all views, modals, drawers, and shell)
+ * - Elevated surfaces: `#080808` (cards/modals) and `#111111` (nested controls/dock/pills)
+ * - Foreground & neutral grays: `#ffffff` primary, `#d4d4d4` secondary, `#a3a3a3` muted
+ * - Brand & interactive accent: `#dc2626` (solid CTA, >=4.5:1 with white text), `#ef4444` / `#f87171` (highlights)
+ *
+ * Documented Visual Exceptions (non-B/W/R content intentionally preserved):
+ * 1. Country flag emojis and appearance/location Unicode emojis (OS emoji font glyphs)
+ * 2. User-uploaded photos and videos (Pokédex cards, live avatar preview, Local Media Vault)
+ * 3. External ad network creatives when an external provider is configured
+ * 4. Mapbox GL grayscale cartography layers (`#050505`–`#888888` matte 3D terrain/buildings)
  */
 @import "tailwindcss";
 
 :root {
   color-scheme: dark;
-  --datedex-accent: #f43f5e;
-  --datedex-gold: #fbbf24;
-  --datedex-surface: #121622;
-  --datedex-border: rgba(255, 255, 255, 0.1);
+  --datedex-bg: #000000;
+  --datedex-surface: #080808;
+  --datedex-surface-elevated: #111111;
+  --datedex-fg: #ffffff;
+  --datedex-muted: #a3a3a3;
+  --datedex-accent: #ef4444;
+  --datedex-accent-strong: #dc2626;
+  --datedex-border: rgba(255, 255, 255, 0.16);
+  --datedex-scrollbar-thumb: #666666;
+  --datedex-scrollbar-track: #000000;
   accent-color: var(--datedex-accent);
-  scrollbar-color: #3f475e #0b0d14;
+  scrollbar-color: var(--datedex-scrollbar-thumb) var(--datedex-scrollbar-track);
+}
+
+html,
+body {
+  background-color: var(--datedex-bg);
+  color: var(--datedex-fg);
 }
 
 @supports not (scrollbar-color: auto) {
@@ -21,10 +46,10 @@
     height: 8px;
   }
   *::-webkit-scrollbar-track {
-    background: #0b0d14;
+    background: var(--datedex-scrollbar-track);
   }
   *::-webkit-scrollbar-thumb {
-    background: #3f475e;
+    background: var(--datedex-scrollbar-thumb);
     border-radius: 9999px;
   }
 }
@@ -36,12 +61,12 @@
     margin: auto;
     max-height: min(92dvh, 840px);
     width: min(95vw, 560px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 1.25rem;
-    background: #121622;
-    color: #f8fafc;
+    background: var(--datedex-bg);
+    color: var(--datedex-fg);
     padding: 0;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9);
   }
 
   dialog.dd-dialog[open] {
@@ -53,7 +78,7 @@
   dialog.dd-dialog::backdrop {
     overflow: hidden;
     overscroll-behavior: contain;
-    background: rgba(5, 7, 12, 0.78);
+    background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(6px);
   }
 }
@@ -75,52 +100,125 @@
   }
 }
 
-/* Custom accent sliders for Amber (Character/Mind/Aesthetic/General) and Rose (Bed) votes */
-input[type="range"].dd-range-amber {
-  accent-color: #fbbf24;
+/* Monochrome white (Character/Mind/Aesthetic/General) and brand red (Bed) range sliders */
+input[type="range"].dd-range-white {
+  accent-color: #ffffff;
 }
 
-input[type="range"].dd-range-rose {
-  accent-color: #fb7185;
+input[type="range"].dd-range-red {
+  accent-color: #ef4444;
+}
+
+/* Native progress bar styling matching black/white/red palette */
+progress.dd-progress {
+  accent-color: var(--datedex-accent);
+  background-color: #171717;
 }
 
 /* Post-interaction validation styling (:user-invalid + fallback class) */
 .dd-input {
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(15, 20, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--datedex-surface);
   padding: 0.625rem 0.875rem;
-  color: #f8fafc;
+  color: var(--datedex-fg);
   font-size: 0.9375rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.dd-input::placeholder {
+  color: #737373;
+}
+
 .dd-input:focus-visible {
-  outline: 2px solid #f43f5e;
-  outline-offset: 1px;
+  outline: 2px solid var(--datedex-accent);
+  outline-offset: 2px;
 }
 
 .dd-input:is(:user-invalid, .user-invalid-fallback) {
-  border-color: #fb7185;
-  background-color: rgba(136, 19, 55, 0.25);
+  border-color: #ef4444;
+  background-color: rgba(127, 29, 29, 0.28);
 }
 
 .dd-error-msg {
   display: none;
   margin-top: 0.35rem;
   font-size: 0.75rem;
-  color: #fda4af;
+  color: #fca5a5;
 }
 
 .dd-input:is(:user-invalid, .user-invalid-fallback) + .dd-error-msg {
   display: block;
 }
 
-/* Brand-consistent form fallback when accent-color is unsupported */
-@supports not (accent-color: #f43f5e) {
+/* Progressive enhancement fallbacks when accent-color is unsupported */
+@supports not (accent-color: #ef4444) {
   input[type="checkbox"].dd-checkbox {
-    outline: 1px solid #f43f5e;
+    outline: 1px solid var(--datedex-accent);
+  }
+
+  input[type="range"].dd-range-white,
+  input[type="range"].dd-range-red {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  input[type="range"].dd-range-white::-webkit-slider-runnable-track,
+  input[type="range"].dd-range-red::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: #262626;
+  }
+
+  input[type="range"].dd-range-white::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    margin-top: -5px;
+    border-radius: 9999px;
+    background: #ffffff;
+  }
+
+  input[type="range"].dd-range-red::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    margin-top: -5px;
+    border-radius: 9999px;
+    background: #ef4444;
+  }
+
+  progress.dd-progress {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    background: #262626;
+  }
+
+  progress.dd-progress::-webkit-progress-bar {
+    background: #262626;
+    border-radius: 9999px;
+  }
+
+  progress.dd-progress::-webkit-progress-value {
+    background: #ef4444;
+    border-radius: 9999px;
+  }
+}
+
+/* Forced Colors Mode (Windows High Contrast) system keyword fallbacks */
+@media (forced-colors: active) {
+  dialog.dd-dialog:modal,
+  .dd-input {
+    border: 1px solid CanvasText;
+  }
+
+  .dd-input:focus-visible {
+    outline: 2px solid Highlight;
   }
 }
 

@@ -656,13 +656,13 @@ export function PinEditorDialog({
           {/* Top Header & Live Preview Strip */}
       <header
         data-testid="pin-editor-header"
-        className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#141927] px-4 py-3.5 sm:px-5 sm:py-4"
+        className="flex shrink-0 items-center justify-between gap-3 border-b border-white/15 bg-black px-4 py-3.5 sm:px-5 sm:py-4"
       >
         <div className="flex min-w-0 items-center gap-3">
           {/* 1. Live Emoji Avatar Box (first uploaded image thumbnail or selected emoji fallback) */}
           <div
             data-testid="pin-live-avatar"
-            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-slate-900/90 text-2xl shadow-inner"
+            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-[#111111] text-2xl shadow-inner"
           >
             {firstImageThumbnail ? (
               <img
@@ -680,7 +680,7 @@ export function PinEditorDialog({
               {/* 2. Chronological Number Badge */}
               <span
                 data-testid="pin-chronological-badge"
-                className="inline-flex items-center rounded-full border border-amber-400/35 bg-amber-400/15 px-2.5 py-0.5 font-mono text-[11px] font-bold text-amber-300"
+                className="inline-flex items-center rounded-full border border-red-500/40 bg-red-600/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-red-300"
               >
                 {chronologicalBadge}
               </span>
@@ -692,7 +692,7 @@ export function PinEditorDialog({
               </h1>
             </div>
             {/* 3. Dynamic Subtitle adapting her / his / their pronouns */}
-            <p data-testid="pin-editor-subtitle" className="mt-0.5 text-xs text-slate-400">
+            <p data-testid="pin-editor-subtitle" className="mt-0.5 text-xs text-neutral-400">
               {initialPin
                 ? t('pinEditor.subtitleEdit', { pronoun: pronouns.possessive })
                 : t('pinEditor.subtitleNew', { pronoun: pronouns.possessive })}
@@ -704,7 +704,7 @@ export function PinEditorDialog({
           type="button"
           onClick={() => dialogRef.current?.close()}
           aria-label={t('pinEditor.closeAria')}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+          className="shrink-0 rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -713,11 +713,11 @@ export function PinEditorDialog({
       <form
         onSubmit={(e) => void handleSubmit(e)}
         noValidate
-        className="flex min-h-0 flex-auto flex-col overflow-hidden"
+        className="flex min-h-0 flex-auto flex-col overflow-hidden bg-black"
       >
         <div
           data-testid="pin-editor-scroll-body"
-          className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-4 pb-6 sm:flex-auto sm:space-y-6 sm:px-5"
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-black px-4 py-4 pb-6 sm:flex-auto sm:space-y-6 sm:px-5"
         >
           {/* ==============================================================
               SECTION 1: Identity & Appearance
@@ -725,11 +725,11 @@ export function PinEditorDialog({
           <section
             data-testid="pin-section-1"
             aria-labelledby="pin-section-1-title"
-            className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/45 p-4"
+            className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-4"
           >
             <h2
               id="pin-section-1-title"
-              className="flex items-center gap-2 text-xs font-bold tracking-wider text-rose-300 uppercase"
+              className="flex items-center gap-2 text-xs font-bold tracking-wider text-red-500 uppercase"
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               {t('pinEditor.section1Title')}
@@ -745,23 +745,23 @@ export function PinEditorDialog({
                   aria-expanded={emojiPickerOpen}
                   aria-controls={emojiPanelId}
                   onClick={() => setEmojiPickerOpen((prev) => !prev)}
-                  className="inline-flex h-[46px] items-center gap-1 rounded-xl border border-white/15 bg-slate-900 px-3 text-xl transition hover:border-rose-400/50 hover:bg-slate-800"
+                  className="inline-flex h-[46px] items-center gap-1 rounded-xl border border-white/15 bg-[#111111] px-3 text-xl transition hover:border-red-500/60 hover:bg-[#1a1a1a]"
                 >
                   <span>{avatarEmoji}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                  <ChevronDown className="h-3.5 w-3.5 text-neutral-400" aria-hidden="true" />
                 </button>
 
                 {emojiPickerOpen && (
                   <div
                     id={emojiPanelId}
                     data-testid="appearance-emoji-popover"
-                    className="dd-popover-panel absolute top-full left-0 z-50 mt-2 w-[min(86vw,380px)] space-y-3 rounded-2xl border border-white/15 bg-[#121725] p-3.5 shadow-2xl shadow-black/80"
+                    className="dd-popover-panel absolute top-full left-0 z-50 mt-2 w-[min(86vw,380px)] space-y-3 rounded-2xl border border-white/20 bg-black p-3.5 shadow-2xl shadow-black/90"
                   >
                     {/* Gender Toggle: Women 👩 / Men 👨 */}
                     <div
                       role="group"
                       aria-label="Appearance gender preset mode"
-                      className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-900/80 p-1"
+                      className="grid grid-cols-2 gap-1.5 rounded-xl border border-white/10 bg-[#111111] p-1"
                     >
                       <button
                         type="button"
@@ -770,8 +770,8 @@ export function PinEditorDialog({
                         onClick={() => setAppearanceGender('women')}
                         className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                           appearanceGender === 'women'
-                            ? 'bg-rose-500/25 text-rose-200 ring-1 ring-rose-400/40'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-red-600 text-white'
+                            : 'text-neutral-400 hover:text-white'
                         }`}
                       >
                         👩 {t('pinEditor.genderWomen')}
@@ -783,8 +783,8 @@ export function PinEditorDialog({
                         onClick={() => setAppearanceGender('men')}
                         className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                           appearanceGender === 'men'
-                            ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/40'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-white text-black'
+                            : 'text-neutral-400 hover:text-white'
                         }`}
                       >
                         👨 {t('pinEditor.genderMen')}
@@ -793,7 +793,7 @@ export function PinEditorDialog({
 
                     {/* Hair Color & Look Grid */}
                     <div className="space-y-1.5">
-                      <p className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                      <p className="text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
                         {t('pinEditor.hairLookHeading')}
                       </p>
                       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -807,15 +807,15 @@ export function PinEditorDialog({
                             }}
                             className={`flex flex-col items-start rounded-xl border p-2 text-left transition ${
                               avatarEmoji === preset.emoji
-                                ? 'border-rose-400/60 bg-rose-500/15'
-                                : 'border-white/10 bg-slate-900/70 hover:border-white/25'
+                                ? 'border-red-500/60 bg-red-600/20'
+                                : 'border-white/15 bg-[#111111] hover:border-white/30'
                             }`}
                           >
                             <span className="text-lg leading-none">{preset.emoji}</span>
                             <span className="mt-1 text-[11px] font-semibold text-white">
                               {preset.label}
                             </span>
-                            <span className="line-clamp-1 text-[10px] text-slate-400">
+                            <span className="line-clamp-1 text-[10px] text-neutral-400">
                               {preset.description}
                             </span>
                           </button>
@@ -825,7 +825,7 @@ export function PinEditorDialog({
 
                     {/* Vibe & Aesthetic Grid */}
                     <div className="space-y-1.5">
-                      <p className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+                      <p className="text-[11px] font-semibold tracking-wide text-neutral-400 uppercase">
                         {t('pinEditor.vibeAestheticHeading')}
                       </p>
                       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -839,15 +839,15 @@ export function PinEditorDialog({
                             }}
                             className={`flex flex-col items-start rounded-xl border p-2 text-left transition ${
                               avatarEmoji === preset.emoji
-                                ? 'border-amber-400/60 bg-amber-500/15'
-                                : 'border-white/10 bg-slate-900/70 hover:border-white/25'
+                                ? 'border-red-500/60 bg-red-600/20'
+                                : 'border-white/15 bg-[#111111] hover:border-white/30'
                             }`}
                           >
                             <span className="text-lg leading-none">{preset.emoji}</span>
                             <span className="mt-1 text-[11px] font-semibold text-white">
                               {preset.label}
                             </span>
-                            <span className="line-clamp-1 text-[10px] text-slate-400">
+                            <span className="line-clamp-1 text-[10px] text-neutral-400">
                               {preset.description}
                             </span>
                           </button>
@@ -856,10 +856,10 @@ export function PinEditorDialog({
                     </div>
 
                     {/* Custom Emoji Input */}
-                    <div className="space-y-1 border-t border-white/10 pt-2.5">
+                    <div className="space-y-1 border-t border-white/15 pt-2.5">
                       <label
                         htmlFor="pin-custom-emoji"
-                        className="block text-[11px] font-medium text-slate-300"
+                        className="block text-[11px] font-medium text-neutral-300"
                       >
                         {t('pinEditor.customEmojiLabel')}
                       </label>
@@ -883,7 +883,7 @@ export function PinEditorDialog({
                         <button
                           type="button"
                           onClick={() => setEmojiPickerOpen(false)}
-                          className="shrink-0 rounded-xl bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
+                          className="shrink-0 rounded-xl border border-white/15 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-white/10"
                         >
                           OK
                         </button>
@@ -896,7 +896,7 @@ export function PinEditorDialog({
               <div className="min-w-0 flex-1">
                 <label
                   htmlFor="pin-name"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.nameLabel')}
                 </label>
@@ -922,7 +922,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-age"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.ageLabel')}
                 </label>
@@ -944,7 +944,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-birth-dob"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.birthYearDobLabel')}
                 </label>
@@ -966,7 +966,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-height"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.heightLabel')}
                 </label>
@@ -989,7 +989,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-instagram"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.instagramLabel')}
                 </label>
@@ -1011,7 +1011,7 @@ export function PinEditorDialog({
 
             {/* Personality & Vibe Tags + custom trait input */}
             <div className="space-y-2">
-              <span className="block text-xs font-medium text-slate-300">
+              <span className="block text-xs font-medium text-neutral-300">
                 {t('pinEditor.personalityTagsLabel')}
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -1025,8 +1025,8 @@ export function PinEditorDialog({
                       onClick={() => toggleListValue(personalityTags, setPersonalityTags, tag)}
                       className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
                         selected
-                          ? 'border-amber-400/60 bg-amber-400/20 text-amber-200'
-                          : 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/25'
+                          ? 'border-red-500/60 bg-red-600/20 text-white'
+                          : 'border-white/15 bg-[#111111] text-neutral-300 hover:border-white/30 hover:text-white'
                       }`}
                     >
                       {tag}
@@ -1063,21 +1063,21 @@ export function PinEditorDialog({
                       setPersonalityTags,
                     )
                   }
-                  className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
+                  className="shrink-0 rounded-xl border border-white/15 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-white/10"
                 >
                   {t('pinEditor.addTagBtn')}
                 </button>
               </div>
             </div>
 
-            {/* Character, Mind, Aesthetic Attractiveness Vote Sliders (Amber 0-10) */}
+            {/* Character, Mind, Aesthetic Attractiveness Vote Sliders (Monochrome White 0-10) */}
             <div className="space-y-3 pt-1">
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <label htmlFor="pin-character-vote" className="font-medium text-slate-300">
+                  <label htmlFor="pin-character-vote" className="font-medium text-neutral-300">
                     {t('pinEditor.characterVoteLabel')}
                   </label>
-                  <span className="font-mono font-bold text-amber-400">
+                  <span className="font-mono font-bold text-white">
                     {characterVote} / 10
                   </span>
                 </div>
@@ -1090,16 +1090,16 @@ export function PinEditorDialog({
                   step={0.5}
                   value={characterVote}
                   onChange={(e) => setCharacterVote(Number(e.target.value))}
-                  className="dd-range-amber w-full"
+                  className="dd-range-white w-full"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <label htmlFor="pin-mind-vote" className="font-medium text-slate-300">
+                  <label htmlFor="pin-mind-vote" className="font-medium text-neutral-300">
                     {t('pinEditor.mindVoteLabel')}
                   </label>
-                  <span className="font-mono font-bold text-amber-400">{mindVote} / 10</span>
+                  <span className="font-mono font-bold text-white">{mindVote} / 10</span>
                 </div>
                 <input
                   id="pin-mind-vote"
@@ -1110,16 +1110,16 @@ export function PinEditorDialog({
                   step={0.5}
                   value={mindVote}
                   onChange={(e) => setMindVote(Number(e.target.value))}
-                  className="dd-range-amber w-full"
+                  className="dd-range-white w-full"
                 />
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <label htmlFor="pin-aesthetic-vote" className="font-medium text-slate-300">
+                  <label htmlFor="pin-aesthetic-vote" className="font-medium text-neutral-300">
                     {t('pinEditor.aestheticVoteLabel')}
                   </label>
-                  <span className="font-mono font-bold text-amber-400">
+                  <span className="font-mono font-bold text-white">
                     {aestheticVote} / 10
                   </span>
                 </div>
@@ -1132,7 +1132,7 @@ export function PinEditorDialog({
                   step={0.5}
                   value={aestheticVote}
                   onChange={(e) => setAestheticVote(Number(e.target.value))}
-                  className="dd-range-amber w-full"
+                  className="dd-range-white w-full"
                 />
               </div>
             </div>
@@ -1144,13 +1144,13 @@ export function PinEditorDialog({
           <section
             data-testid="pin-section-2"
             aria-labelledby="pin-section-2-title"
-            className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/45 p-4"
+            className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-4"
           >
             <h2
               id="pin-section-2-title"
-              className="flex items-center gap-2 text-xs font-bold tracking-wider text-sky-300 uppercase"
+              className="flex items-center gap-2 text-xs font-bold tracking-wider text-white uppercase"
             >
-              <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <Globe2 className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
               {t('pinEditor.section2Title')}
             </h2>
 
@@ -1161,11 +1161,11 @@ export function PinEditorDialog({
                   <div className="flex-1">
                     <label
                       htmlFor={`pin-root-${idx}`}
-                      className="mb-1 flex items-center justify-between text-xs font-medium text-slate-300"
+                      className="mb-1 flex items-center justify-between text-xs font-medium text-neutral-300"
                     >
                       <span>{getRootSlotLabel(idx)}</span>
                       {idx === 0 && (
-                        <span className="text-[10px] text-sky-300">
+                        <span className="text-[10px] text-neutral-400">
                           {COUNTRY_BY_CODE.get(code)?.capital ?? ''}
                         </span>
                       )}
@@ -1189,7 +1189,7 @@ export function PinEditorDialog({
                       type="button"
                       aria-label={t('pinEditor.removeRootAria')}
                       onClick={() => handleRemoveRoot(idx)}
-                      className="mb-0.5 rounded-xl border border-rose-500/30 p-2.5 text-rose-300 hover:bg-rose-500/15"
+                      className="mb-0.5 rounded-xl border border-red-500/40 p-2.5 text-red-400 hover:bg-red-600/20"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1201,7 +1201,7 @@ export function PinEditorDialog({
                 type="button"
                 data-testid="add-heritage-root-btn"
                 onClick={handleAddRoot}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-sky-400/40 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-200 hover:bg-sky-500/20"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-white/25 bg-[#111111] px-3 py-1.5 text-xs font-semibold text-neutral-200 transition hover:border-white/40 hover:bg-white/10"
               >
                 {t('pinEditor.addRootBtn')}
               </button>
@@ -1252,9 +1252,9 @@ export function PinEditorDialog({
             {/* Resolved Pin Coordinate Preview */}
             <div
               data-testid="pin-resolved-location"
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-300"
+              className="flex items-center gap-2 rounded-xl border border-white/15 bg-[#111111] px-3 py-2 text-[11px] text-neutral-300"
             >
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-red-500" aria-hidden="true" />
               <span>
                 {resolvedLocation.source === 'birth_city'
                   ? t('pinEditor.pinResolvedBirthCity', {
@@ -1272,18 +1272,18 @@ export function PinEditorDialog({
           </section>
 
           {/* ==============================================================
-              SECTION 3: The Encounter & Overall Vote (text-amber-400 styling)
+              SECTION 3: The Encounter & Overall Vote (Brand Red heading)
              ============================================================== */}
           <section
             data-testid="pin-section-3"
             aria-labelledby="pin-section-3-title"
-            className="space-y-4 rounded-2xl border border-amber-400/25 bg-amber-500/5 p-4"
+            className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-4"
           >
             <h2
               id="pin-section-3-title"
-              className="flex items-center gap-2 text-xs font-bold tracking-wider text-amber-400 uppercase"
+              className="flex items-center gap-2 text-xs font-bold tracking-wider text-red-500 uppercase"
             >
-              <Calendar className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+              <Calendar className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
               {t('pinEditor.section3Title')}
             </h2>
 
@@ -1291,7 +1291,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-date-met"
-                  className="mb-1 block text-xs font-medium text-amber-400"
+                  className="mb-1 block text-xs font-medium text-neutral-200"
                 >
                   {t('pinEditor.dateMetLabel')}
                 </label>
@@ -1315,7 +1315,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-how-we-met"
-                  className="mb-1 block text-xs font-medium text-amber-400"
+                  className="mb-1 block text-xs font-medium text-neutral-200"
                 >
                   {t('pinEditor.howWeMetLabel')}
                 </label>
@@ -1340,7 +1340,7 @@ export function PinEditorDialog({
               <div data-testid="friend-intro-field">
                 <label
                   htmlFor="pin-friend-intro"
-                  className="mb-1 block text-xs font-medium text-amber-400"
+                  className="mb-1 block text-xs font-medium text-neutral-200"
                 >
                   {t('pinEditor.friendIntroLabel')}
                 </label>
@@ -1362,7 +1362,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-spent-amount"
-                  className="mb-1 block text-xs font-medium text-amber-400"
+                  className="mb-1 block text-xs font-medium text-neutral-200"
                 >
                   {t('pinEditor.totalSpentLabel')}
                 </label>
@@ -1399,7 +1399,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-status"
-                  className="mb-1 block text-xs font-medium text-amber-400"
+                  className="mb-1 block text-xs font-medium text-neutral-200"
                 >
                   {t('pinEditor.statusDynamicLabel')}
                 </label>
@@ -1428,13 +1428,13 @@ export function PinEditorDialog({
           <section
             data-testid="pin-section-4"
             aria-labelledby="pin-section-4-title"
-            className="space-y-4 rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4"
+            className="space-y-4 rounded-2xl border border-red-500/35 bg-[#080808] p-4"
           >
             <h2
               id="pin-section-4-title"
-              className="flex items-center gap-2 text-xs font-bold tracking-wider text-rose-300 uppercase"
+              className="flex items-center gap-2 text-xs font-bold tracking-wider text-red-400 uppercase"
             >
-              <Flame className="h-3.5 w-3.5 text-rose-400" aria-hidden="true" />
+              <Flame className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
               {t('pinEditor.section4Title')}
             </h2>
 
@@ -1442,7 +1442,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-intimacy-level"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.intimacyLevelLabel')}
                 </label>
@@ -1474,7 +1474,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-dates-to-bed"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.dates2BedLabel')}
                 </label>
@@ -1510,7 +1510,7 @@ export function PinEditorDialog({
               <div>
                 <label
                   htmlFor="pin-first-intimate-date"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  className="mb-1 block text-xs font-medium text-neutral-300"
                 >
                   {t('pinEditor.firstIntimateDateLabel')}
                 </label>
@@ -1540,13 +1540,13 @@ export function PinEditorDialog({
               />
             </div>
 
-            {/* Bed Vote Slider (Rose 0-10) */}
+            {/* Bed Vote Slider (Brand Red 0-10) */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <label htmlFor="pin-bed-vote" className="font-medium text-slate-300">
+                <label htmlFor="pin-bed-vote" className="font-medium text-neutral-300">
                   {t('pinEditor.bedVoteLabel')}
                 </label>
-                <span className="font-mono font-bold text-rose-400">{bedVote} / 10</span>
+                <span className="font-mono font-bold text-red-400">{bedVote} / 10</span>
               </div>
               <input
                 id="pin-bed-vote"
@@ -1557,13 +1557,13 @@ export function PinEditorDialog({
                 step={0.5}
                 value={bedVote}
                 onChange={(e) => setBedVote(Number(e.target.value))}
-                className="dd-range-rose w-full"
+                className="dd-range-red w-full"
               />
             </div>
 
             {/* Where We Hooked Up (Locations) + custom location input */}
             <div className="space-y-2">
-              <span className="block text-xs font-medium text-slate-300">
+              <span className="block text-xs font-medium text-neutral-300">
                 {t('pinEditor.hookupLocationsLabel')}
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -1579,8 +1579,8 @@ export function PinEditorDialog({
                       }
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                         selected
-                          ? 'border-rose-400/60 bg-rose-500/20 text-rose-100'
-                          : 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/25'
+                          ? 'border-red-500/60 bg-red-600/20 text-white'
+                          : 'border-white/15 bg-[#111111] text-neutral-300 hover:border-white/30 hover:text-white'
                       }`}
                     >
                       {loc.emoji} {loc.label}
@@ -1593,7 +1593,7 @@ export function PinEditorDialog({
                     type="button"
                     aria-pressed="true"
                     onClick={() => toggleListValue(hookupLocations, setHookupLocations, loc)}
-                    className="rounded-full border border-rose-400/60 bg-rose-500/20 px-3 py-1 text-xs font-medium text-rose-100"
+                    className="rounded-full border border-red-500/60 bg-red-600/20 px-3 py-1 text-xs font-medium text-white"
                   >
                     📍 {loc}
                   </button>
@@ -1628,7 +1628,7 @@ export function PinEditorDialog({
                       setHookupLocations,
                     )
                   }
-                  className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
+                  className="shrink-0 rounded-xl border border-white/15 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-white/10"
                 >
                   {t('pinEditor.addTagBtn')}
                 </button>
@@ -1637,7 +1637,7 @@ export function PinEditorDialog({
 
             {/* Positions & Intimate Tags + custom tag adder */}
             <div className="space-y-2">
-              <span className="block text-xs font-medium text-slate-300">
+              <span className="block text-xs font-medium text-neutral-300">
                 {t('pinEditor.intimateTagsLabel')}
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -1651,8 +1651,8 @@ export function PinEditorDialog({
                       onClick={() => toggleListValue(intimateTags, setIntimateTags, tag)}
                       className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
                         selected
-                          ? 'border-rose-400/60 bg-rose-500/20 text-rose-100'
-                          : 'border-white/10 bg-slate-900/70 text-slate-300 hover:border-white/25'
+                          ? 'border-red-500/60 bg-red-600/20 text-white'
+                          : 'border-white/15 bg-[#111111] text-neutral-300 hover:border-white/30 hover:text-white'
                       }`}
                     >
                       {tag}
@@ -1689,7 +1689,7 @@ export function PinEditorDialog({
                       setIntimateTags,
                     )
                   }
-                  className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
+                  className="shrink-0 rounded-xl border border-white/15 bg-[#111111] px-3 text-xs font-semibold text-white hover:bg-white/10"
                 >
                   {t('pinEditor.addTagBtn')}
                 </button>
@@ -1703,20 +1703,20 @@ export function PinEditorDialog({
           <section
             data-testid="pin-section-5"
             aria-labelledby="pin-section-5-title"
-            className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/45 p-4"
+            className="space-y-4 rounded-2xl border border-white/15 bg-[#080808] p-4"
           >
             <h2
               id="pin-section-5-title"
-              className="flex items-center gap-2 text-xs font-bold tracking-wider text-purple-300 uppercase"
+              className="flex items-center gap-2 text-xs font-bold tracking-wider text-white uppercase"
             >
-              <Heart className="h-3.5 w-3.5 text-purple-400" aria-hidden="true" />
+              <Heart className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
               {t('pinEditor.section5Title')}
             </h2>
 
             <div>
               <label
                 htmlFor="pin-story"
-                className="mb-1 block text-xs font-medium text-slate-300"
+                className="mb-1 block text-xs font-medium text-neutral-300"
               >
                 {t('pinEditor.storyLabel')}
               </label>
@@ -1735,7 +1735,7 @@ export function PinEditorDialog({
             <div>
               <label
                 htmlFor="pin-highlights"
-                className="mb-1 block text-xs font-medium text-slate-300"
+                className="mb-1 block text-xs font-medium text-neutral-300"
               >
                 {t('pinEditor.highlightsLabel')}
               </label>
@@ -1751,13 +1751,13 @@ export function PinEditorDialog({
               />
             </div>
 
-            {/* General Vote Slider (Amber 0-10) */}
+            {/* General Vote Slider (Monochrome White 0-10) */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <label htmlFor="pin-general-vote" className="font-medium text-slate-300">
+                <label htmlFor="pin-general-vote" className="font-medium text-neutral-300">
                   {t('pinEditor.generalVoteLabel')}
                 </label>
-                <span className="font-mono font-bold text-amber-400">
+                <span className="font-mono font-bold text-white">
                   {generalVote} / 10
                 </span>
               </div>
@@ -1770,7 +1770,7 @@ export function PinEditorDialog({
                 step={0.5}
                 value={generalVote}
                 onChange={(e) => setGeneralVote(Number(e.target.value))}
-                className="dd-range-amber w-full"
+                className="dd-range-white w-full"
               />
             </div>
           </section>
@@ -1781,28 +1781,28 @@ export function PinEditorDialog({
           <section
             data-testid="pin-section-6"
             aria-labelledby="pin-section-6-title"
-            className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4"
+            className="space-y-3 rounded-2xl border border-white/15 bg-[#080808] p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2
                 id="pin-section-6-title"
-                className="flex items-center gap-2 text-xs font-bold tracking-wider text-emerald-300 uppercase"
+                className="flex items-center gap-2 text-xs font-bold tracking-wider text-white uppercase"
               >
-                <Camera className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                <Camera className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
                 {t('pinEditor.section6Title')}
               </h2>
               {/* Zero-Cloud Privacy Badge */}
               <span
                 data-testid="zero-cloud-badge"
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200"
+                className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-[#111111] px-2.5 py-0.5 text-[11px] font-semibold text-white"
               >
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                <ShieldCheck className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
                 {t('pinEditor.zeroCloudBadge')}
               </span>
             </div>
 
             {mediaError && (
-              <p role="alert" className="text-xs text-rose-300">
+              <p role="alert" className="text-xs text-red-400">
                 {mediaError}
               </p>
             )}
@@ -1816,7 +1816,7 @@ export function PinEditorDialog({
                 <div
                   key={item.id}
                   data-testid={`local-media-tile-${item.id}`}
-                  className="group relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-slate-900"
+                  className="group relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-[#111111]"
                 >
                   {item.kind === 'image' ? (
                     <img
@@ -1836,7 +1836,7 @@ export function PinEditorDialog({
                     type="button"
                     onClick={() => void handleDeleteMediaItem(item.id)}
                     aria-label={t('pinEditor.deleteMediaAria', { name: item.fileName })}
-                    className="absolute top-1.5 right-1.5 rounded-lg bg-black/75 p-1.5 text-rose-300 opacity-90 transition hover:bg-rose-600 hover:text-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute top-1.5 right-1.5 rounded-lg bg-black/80 p-1.5 text-red-400 opacity-90 transition hover:bg-red-600 hover:text-white focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -1845,9 +1845,9 @@ export function PinEditorDialog({
 
               <label
                 htmlFor="pin-local-media-input"
-                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-emerald-400/40 bg-slate-900/60 p-2 text-center text-[11px] font-semibold text-emerald-200 transition hover:border-emerald-300 hover:bg-emerald-500/10"
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/25 bg-[#111111] p-2 text-center text-[11px] font-semibold text-neutral-200 transition hover:border-red-500/60 hover:bg-red-600/10 hover:text-white"
               >
-                <Plus className="h-5 w-5 text-emerald-400" aria-hidden="true" />
+                <Plus className="h-5 w-5 text-red-500" aria-hidden="true" />
                 <span>{t('pinEditor.addMediaTile')}</span>
                 <input
                   id="pin-local-media-input"
@@ -1865,7 +1865,7 @@ export function PinEditorDialog({
           {errorMsg && (
             <div
               role="alert"
-              className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-200"
+              className="rounded-xl border border-red-500/50 bg-red-950/50 px-3 py-2 text-xs text-red-200"
             >
               {errorMsg}
             </div>
@@ -1877,7 +1877,7 @@ export function PinEditorDialog({
            ============================================================== */}
         <footer
           data-testid="pin-editor-footer"
-          className="flex shrink-0 items-center justify-between gap-2 border-t border-white/10 bg-[#141927] px-4 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-5"
+          className="flex shrink-0 items-center justify-between gap-2 border-t border-white/15 bg-black px-4 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-5"
         >
           {initialPin && onDelete ? (
             <button
@@ -1892,7 +1892,7 @@ export function PinEditorDialog({
                   })
                   .finally(() => setSaving(false));
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 px-3 py-2.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/15"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 px-3 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-600/20"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               {t('common.delete')}
@@ -1905,14 +1905,14 @@ export function PinEditorDialog({
             <button
               type="button"
               onClick={() => dialogRef.current?.close()}
-              className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-medium text-slate-300 hover:bg-white/5"
+              className="rounded-xl border border-white/15 bg-[#111111] px-4 py-2.5 text-xs font-medium text-neutral-200 hover:bg-white/10 hover:text-white"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-500/20 hover:brightness-110 disabled:opacity-60"
+              className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500 disabled:opacity-60"
             >
               {saving
                 ? t('pinEditor.encrypting')

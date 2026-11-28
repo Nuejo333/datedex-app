@@ -44,13 +44,13 @@ export function AdBannerSlot({
     <aside
       aria-label={t('ad.bannerAria')}
       data-testid="ad-banner-slot"
-      className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#121622]/90 px-4 py-3 text-xs"
+      className="flex items-center justify-between gap-3 rounded-2xl border border-white/15 bg-[#080808] px-4 py-3 text-xs"
     >
       <div className="min-w-0">
-        <span className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+        <span className="text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">
           {t('ad.sponsored')} • {provider.isConfigured ? provider.networkName : t('ad.freeTier')}
         </span>
-        <p className="truncate font-medium text-slate-200">{t('ad.bannerCopy')}</p>
+        <p className="truncate font-medium text-neutral-200">{t('ad.bannerCopy')}</p>
       </div>
       <button
         type="button"
@@ -58,7 +58,7 @@ export function AdBannerSlot({
           void recordMonetizationEvent('ad_click', slot);
           onUpgradeClick();
         }}
-        className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-amber-400/20 px-3 py-1.5 font-semibold text-amber-300 hover:bg-amber-400/30"
+        className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-red-600 px-3 py-1.5 font-semibold text-white transition hover:bg-red-500"
       >
         <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
         {t('ad.goPro')}
